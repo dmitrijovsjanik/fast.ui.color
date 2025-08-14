@@ -195,7 +195,6 @@ export function ColorPalette() {
           display: grid;
           grid-template-columns: 120px repeat(12, 1fr);
           gap: 4px;
-          padding: 0.5rem 0;
           transition: background 0.2s ease;
         }
 
