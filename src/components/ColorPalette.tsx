@@ -19,6 +19,39 @@ function ColorSwatch({ colorName, colorValue }: ColorSwatchProps) {
   );
 }
 
+// Компонент строки палитры
+interface ColorRowProps {
+  colorName: string;
+  colors: ColorPaletteType;
+}
+
+function ColorRow({ colorName, colors }: ColorRowProps) {
+  return (
+    <div className="color-row">
+      <div className="color-name">{colorName}</div>
+      {Array.from({ length: 12 }, (_, i) => i + 1).map(scale => (
+        <ColorSwatch
+          key={scale}
+          colorName={colorName}
+          colorValue={getColor(colors, colorName as keyof ColorPaletteType, scale as keyof ColorScale)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Компонент заголовка таблицы
+function TableHeader() {
+  return (
+    <div className="table-header">
+      <div className="color-name-header">Color</div>
+      {Array.from({ length: 12 }, (_, i) => i + 1).map(scale => (
+        <div key={scale} className="scale-header">{scale}</div>
+      ))}
+    </div>
+  );
+}
+
 // Компонент настроек
 interface SettingsPanelProps {
   theme: any;
@@ -60,29 +93,14 @@ export function ColorPalette() {
         </div>
 
         <div className="palette-content">
-          <div className="color-table">
-            {/* Заголовок с номерами шагов */}
-            <div className="table-header">
-              <div className="color-name-header">Color</div>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(scale => (
-                <div key={scale} className="scale-header">{scale}</div>
-              ))}
-            </div>
-
-            {/* Строки с цветами */}
-            {allColors.map(colorName => (
-              <div key={colorName} className="color-row">
-                <div className="color-name">{colorName}</div>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(scale => (
-                  <ColorSwatch
-                    key={scale}
-                    colorName={colorName}
-                    colorValue={getColor(colors, colorName, scale as keyof ColorScale)}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
+          <TableHeader />
+          {allColors.map(colorName => (
+            <ColorRow
+              key={colorName}
+              colorName={colorName}
+              colors={colors}
+            />
+          ))}
         </div>
       </div>
 
@@ -118,7 +136,7 @@ export function ColorPalette() {
         .content-header h1 {
           margin: 0 0 0.5rem 0;
           font-size: 1.75rem;
-          font-weight: 600;
+          font-weight: 700;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
@@ -126,6 +144,7 @@ export function ColorPalette() {
           margin: 0;
           color: ${getColor(colors, 'gray', 11)};
           font-size: 0.9rem;
+          font-weight: 400;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
@@ -135,29 +154,22 @@ export function ColorPalette() {
           padding: 2rem;
         }
 
-        .color-table {
-          background: ${getColor(colors, 'gray', 2)};
-          border-radius: 0.75rem;
-          border: 1px solid ${getColor(colors, 'gray', 6)};
-          overflow: hidden;
-          border-spacing: 4px;
-        }
-
         .table-header {
           display: grid;
           grid-template-columns: 120px repeat(12, 1fr);
-          background: ${getColor(colors, 'gray', 3)};
+          gap: 4px;
+          padding: 0 0 1rem 0;
+          margin-bottom: 1rem;
           border-bottom: 1px solid ${getColor(colors, 'gray', 6)};
           position: sticky;
           top: 0;
           z-index: 10;
-          gap: 4px;
-          padding: 4px;
+          background: ${getColor(colors, 'gray', 1)};
         }
 
         .color-name-header, .scale-header {
           padding: 0.5rem;
-          font-weight: 600;
+          font-weight: 700;
           text-align: center;
           font-size: 0.9rem;
           color: ${getColor(colors, 'gray', 12)};
@@ -165,20 +177,20 @@ export function ColorPalette() {
 
         .color-name-header {
           text-align: left;
-          padding-left: 1rem;
+          padding-left: 0;
         }
 
         .color-row {
           display: grid;
           grid-template-columns: 120px repeat(12, 1fr);
-          border-bottom: 1px solid ${getColor(colors, 'gray', 5)};
-          transition: background 0.2s ease;
           gap: 4px;
-          padding: 4px;
+          padding: 0.5rem 0;
+          border-bottom: 1px solid ${getColor(colors, 'gray', 4)};
+          transition: background 0.2s ease;
         }
 
         .color-row:hover {
-          background: ${getColor(colors, 'gray', 3)};
+          background: ${getColor(colors, 'gray', 2)};
         }
 
         .color-row:last-child {
@@ -186,8 +198,8 @@ export function ColorPalette() {
         }
 
         .color-name {
-          padding: 1rem;
-          font-weight: 600;
+          padding: 0.5rem 0;
+          font-weight: 500;
           text-transform: capitalize;
           color: ${getColor(colors, 'gray', 12)};
           display: flex;
@@ -207,10 +219,6 @@ export function ColorPalette() {
           transform: scale(1.02);
           z-index: 5;
         }
-
-
-
-
 
         /* Settings Panel Styles */
         .settings-panel {
@@ -275,12 +283,12 @@ export function ColorPalette() {
           }
 
           .color-name-header, .scale-header {
-            padding: 0.75rem 0.25rem;
+            padding: 0.5rem 0.25rem;
             font-size: 0.8rem;
           }
 
           .color-name {
-            padding: 0.75rem;
+            padding: 0.5rem 0;
             font-size: 0.9rem;
           }
 
