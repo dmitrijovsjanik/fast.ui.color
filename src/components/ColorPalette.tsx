@@ -94,13 +94,15 @@ export function ColorPalette() {
 
         <div className="palette-content">
           <TableHeader />
-          {allColors.map(colorName => (
-            <ColorRow
-              key={colorName}
-              colorName={colorName}
-              colors={colors}
-            />
-          ))}
+          <div className="color-rows-container">
+            {allColors.map(colorName => (
+              <ColorRow
+                key={colorName}
+                colorName={colorName}
+                colors={colors}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -181,6 +183,12 @@ export function ColorPalette() {
         .color-name-header {
           text-align: left;
           padding-left: 0;
+        }
+
+        .color-rows-container {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
         }
 
         .color-row {
