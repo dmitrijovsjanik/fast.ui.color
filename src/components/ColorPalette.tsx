@@ -25,56 +25,18 @@ function ColorSwatch({ colorName, colorValue }: ColorSwatchProps) {
 interface SettingsPanelProps {
   theme: any;
   toggleTheme: () => void;
-  selectedCategory: string;
-  onCategoryChange: (category: string) => void;
 }
 
-function SettingsPanel({ theme, toggleTheme, selectedCategory, onCategoryChange }: SettingsPanelProps) {
-  const categories = [
-    { id: 'neutral', name: 'Neutral', colors: ['gray', 'mauve', 'slate', 'sage', 'olive', 'sand'] },
-    { id: 'red', name: 'Red', colors: ['tomato', 'red', 'ruby', 'crimson'] },
-    { id: 'pink', name: 'Pink', colors: ['pink', 'plum', 'purple', 'violet', 'indigo'] },
-    { id: 'blue', name: 'Blue', colors: ['blue', 'cyan', 'teal'] },
-    { id: 'green', name: 'Green', colors: ['green', 'grass'] },
-    { id: 'brown', name: 'Brown', colors: ['brown'] },
-    { id: 'orange', name: 'Orange', colors: ['orange'] },
-    { id: 'sky', name: 'Sky', colors: ['sky'] },
-    { id: 'mint', name: 'Mint', colors: ['mint'] },
-    { id: 'lime', name: 'Lime', colors: ['lime'] },
-    { id: 'yellow', name: 'Yellow', colors: ['yellow', 'amber', 'gold', 'bronze'] },
-  ];
-
+function SettingsPanel({ theme, toggleTheme }: SettingsPanelProps) {
   return (
     <div className="settings-panel">
-      <div className="settings-header">
-        <h2>Settings</h2>
-      </div>
-      
-      <div className="theme-section">
-        <h3>Theme</h3>
-        <div className="theme-controls">
-          <span className="current-theme">
-            {theme.mode} {theme.isDark ? '(Dark)' : '(Light)'}
-          </span>
-          <button onClick={toggleTheme} className="theme-toggle-btn">
-            Toggle
-          </button>
-        </div>
-      </div>
-
-      <div className="category-section">
-        <h3>Categories</h3>
-        <div className="category-list">
-          {categories.map(category => (
-            <button
-              key={category.id}
-              className={`category-btn ${selectedCategory === category.id ? 'active' : ''}`}
-              onClick={() => onCategoryChange(category.id)}
-            >
-              {category.name}
-            </button>
-          ))}
-        </div>
+      <div className="theme-controls">
+        <span className="current-theme">
+          {theme.mode} {theme.isDark ? '(Dark)' : '(Light)'}
+        </span>
+        <button onClick={toggleTheme} className="theme-toggle-btn">
+          Toggle Theme
+        </button>
       </div>
     </div>
   );
@@ -90,19 +52,18 @@ export function ColorPalette() {
 
   return (
     <div className="color-palette-container">
-      <div className="settings-sidebar">
-        <SettingsPanel
-          theme={theme}
-          toggleTheme={toggleTheme}
-          selectedCategory=""
-          onCategoryChange={() => {}}
-        />
-      </div>
-
       <div className="content-area">
         <div className="content-header">
-          <h1>Radix UI Color Palette</h1>
-          <p>Complete color system with {allColors.length} color scales</p>
+          <div className="header-content">
+            <div>
+              <h1>Radix UI Color Palette</h1>
+              <p>Complete color system with {allColors.length} color scales</p>
+            </div>
+            <SettingsPanel
+              theme={theme}
+              toggleTheme={toggleTheme}
+            />
+          </div>
         </div>
 
         <div className="palette-content">
@@ -134,23 +95,15 @@ export function ColorPalette() {
 
       <style jsx>{`
         .color-palette-container {
-          display: flex;
           height: 100vh;
           background: ${getColor(colors, 'gray', '1')};
           color: ${getColor(colors, 'gray', '12')};
           transition: all 0.3s ease;
-        }
-
-        .settings-sidebar {
-          width: 280px;
-          background: ${getColor(colors, 'gray', '2')};
-          border-right: 1px solid ${getColor(colors, 'gray', '6')};
-          overflow-y: auto;
-          flex-shrink: 0;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .content-area {
-          flex: 1;
+          height: 100%;
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -160,18 +113,27 @@ export function ColorPalette() {
           padding: 1.5rem 2rem;
           border-bottom: 1px solid ${getColor(colors, 'gray', '6')};
           background: ${getColor(colors, 'gray', '1')};
+          flex-shrink: 0;
+        }
+
+        .header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
         }
 
         .content-header h1 {
           margin: 0 0 0.5rem 0;
           font-size: 1.75rem;
           font-weight: 600;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .content-header p {
           margin: 0;
           color: ${getColor(colors, 'gray', '11')};
           font-size: 0.9rem;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .palette-content {
@@ -254,59 +216,43 @@ export function ColorPalette() {
 
         .color-swatch.transparent {
           background-image: 
-            linear-gradient(45deg, #ccc 25%, transparent 25%), 
-            linear-gradient(-45deg, #ccc 25%, transparent 25%), 
-            linear-gradient(45deg, transparent 75%, #ccc 75%), 
-            linear-gradient(-45deg, transparent 75%, #ccc 75%);
-          background-size: 8px 8px;
-          background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+            linear-gradient(45deg, #e5e5e5 25%, transparent 25%), 
+            linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), 
+            linear-gradient(45deg, transparent 75%, #e5e5e5 75%), 
+            linear-gradient(-45deg, transparent 75%, #e5e5e5 75%);
+          background-size: 16px 16px;
+          background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
         }
 
         /* Settings Panel Styles */
         .settings-panel {
-          padding: 1.5rem;
-        }
-
-        .settings-header h2 {
-          margin: 0 0 1.5rem 0;
-          font-size: 1.25rem;
-          font-weight: 600;
-        }
-
-        .theme-section, .category-section {
-          margin-bottom: 1.5rem;
-        }
-
-        .theme-section h3, .category-section h3 {
-          margin: 0 0 0.75rem 0;
-          font-size: 0.9rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: ${getColor(colors, 'gray', '11')};
+          display: flex;
+          align-items: center;
+          gap: 1rem;
         }
 
         .theme-controls {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 0.75rem;
+          gap: 1rem;
         }
 
         .current-theme {
-          font-size: 0.85rem;
+          font-size: 0.9rem;
           color: ${getColor(colors, 'gray', '11')};
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .theme-toggle-btn {
-          padding: 0.375rem 0.75rem;
+          padding: 0.5rem 1rem;
           background: ${getColor(colors, 'blue', '9')};
           color: white;
           border: none;
-          border-radius: 0.375rem;
+          border-radius: 0.5rem;
           cursor: pointer;
-          font-size: 0.8rem;
+          font-size: 0.9rem;
           font-weight: 500;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           transition: background 0.2s ease;
         }
 
@@ -314,50 +260,12 @@ export function ColorPalette() {
           background: ${getColor(colors, 'blue', '10')};
         }
 
-        .category-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.375rem;
-        }
-
-        .category-btn {
-          padding: 0.5rem 0.75rem;
-          background: transparent;
-          border: 1px solid ${getColor(colors, 'gray', '6')};
-          border-radius: 0.375rem;
-          color: ${getColor(colors, 'gray', '11')};
-          cursor: pointer;
-          font-size: 0.85rem;
-          text-align: left;
-          transition: all 0.2s ease;
-        }
-
-        .category-btn:hover {
-          background: ${getColor(colors, 'gray', '3')};
-          border-color: ${getColor(colors, 'gray', '7')};
-        }
-
-        .category-btn.active {
-          background: ${getColor(colors, 'blue', '9')};
-          border-color: ${getColor(colors, 'blue', '9')};
-          color: white;
-        }
-
         /* Responsive Design */
         @media (max-width: 1024px) {
-          .color-palette-container {
+          .header-content {
             flex-direction: column;
-          }
-
-          .settings-sidebar {
-            width: 100%;
-            height: auto;
-            border-right: none;
-            border-bottom: 1px solid ${getColor(colors, 'gray', '6')};
-          }
-
-          .settings-panel {
-            padding: 1rem;
+            gap: 1rem;
+            align-items: flex-start;
           }
 
           .table-header, .color-row {
@@ -394,6 +302,12 @@ export function ColorPalette() {
 
           .color-swatch {
             height: 2rem;
+          }
+
+          .settings-panel {
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
           }
         }
       `}</style>
