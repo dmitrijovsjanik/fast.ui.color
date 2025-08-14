@@ -152,19 +152,21 @@ export function ColorPalette() {
           flex: 1;
           overflow-y: auto;
           padding: 2rem;
+          padding-top: 1rem;
         }
 
         .table-header {
           display: grid;
           grid-template-columns: 120px repeat(12, 1fr);
           gap: 4px;
-          padding: 0 0 1rem 0;
-          margin-bottom: 1rem;
-          border-bottom: 1px solid ${getColor(colors, 'gray', 6)};
+          padding: 1rem 0;
           position: sticky;
           top: 0;
           z-index: 10;
-          background: ${getColor(colors, 'gray', 1)};
+          background: ${getColor(colors, 'gray', 1)} / 0.8;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-bottom: 1px solid ${getColor(colors, 'gray', 6)};
         }
 
         .color-name-header, .scale-header {
@@ -173,6 +175,7 @@ export function ColorPalette() {
           text-align: center;
           font-size: 0.9rem;
           color: ${getColor(colors, 'gray', 12)};
+          text-shadow: 0 1px 2px ${getColor(colors, 'gray', 1)} / 0.8;
         }
 
         .color-name-header {
@@ -185,16 +188,11 @@ export function ColorPalette() {
           grid-template-columns: 120px repeat(12, 1fr);
           gap: 4px;
           padding: 0.5rem 0;
-          border-bottom: 1px solid ${getColor(colors, 'gray', 4)};
           transition: background 0.2s ease;
         }
 
         .color-row:hover {
           background: ${getColor(colors, 'gray', 2)};
-        }
-
-        .color-row:last-child {
-          border-bottom: none;
         }
 
         .color-name {
