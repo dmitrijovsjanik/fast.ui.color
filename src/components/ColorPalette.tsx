@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme, useColors } from '../themes/themeProvider';
 import { getColor, ColorPalette as ColorPaletteType, ColorScale } from '../colors/palette';
+import { SunIcon, MoonIcon } from '@radix-ui/react-icons';
 
 // Компонент для отображения одного цвета
 interface ColorSwatchProps {
@@ -27,14 +28,9 @@ interface SettingsPanelProps {
 function SettingsPanel({ theme, toggleTheme }: SettingsPanelProps) {
   return (
     <div className="settings-panel">
-      <div className="theme-controls">
-        <span className="current-theme">
-          {theme.mode} {theme.isDark ? '(Dark)' : '(Light)'}
-        </span>
-        <button onClick={toggleTheme} className="theme-toggle-btn">
-          Toggle Theme
-        </button>
-      </div>
+      <button onClick={toggleTheme} className="theme-toggle-btn" title={`Switch to ${theme.isDark ? 'light' : 'dark'} theme`}>
+        {theme.isDark ? <SunIcon width={20} height={20} /> : <MoonIcon width={20} height={20} />}
+      </button>
     </div>
   );
 }
@@ -217,36 +213,32 @@ export function ColorPalette() {
         .settings-panel {
           display: flex;
           align-items: center;
-          gap: 1rem;
-        }
-
-        .theme-controls {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .current-theme {
-          font-size: 0.9rem;
-          color: ${getColor(colors, 'gray', '11')};
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .theme-toggle-btn {
-          padding: 0.5rem 1rem;
-          background: ${getColor(colors, 'blue', '9')};
-          color: white;
-          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          background: ${getColor(colors, 'gray', '3')};
+          color: ${getColor(colors, 'gray', '11')};
+          border: 1px solid ${getColor(colors, 'gray', '6')};
           border-radius: 0.5rem;
           cursor: pointer;
-          font-size: 0.9rem;
-          font-weight: 500;
+          transition: all 0.2s ease;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          transition: background 0.2s ease;
         }
 
         .theme-toggle-btn:hover {
-          background: ${getColor(colors, 'blue', '10')};
+          background: ${getColor(colors, 'gray', '4')};
+          border-color: ${getColor(colors, 'gray', '7')};
+          color: ${getColor(colors, 'gray', '12')};
+        }
+
+        .theme-toggle-btn:focus {
+          outline: none;
+          box-shadow: 0 0 0 2px ${getColor(colors, 'blue', '7')};
         }
 
         /* Responsive Design */
@@ -294,9 +286,7 @@ export function ColorPalette() {
           }
 
           .settings-panel {
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: flex-start;
+            align-self: flex-end;
           }
         }
       `}</style>
