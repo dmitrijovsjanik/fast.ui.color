@@ -1,48 +1,20 @@
 import React, { useState } from 'react';
 import { useTheme, useColors } from '../themes/themeProvider';
-import { getColor, getColorScales, ColorPalette as ColorPaletteType } from '../colors/palette';
+import { getColor, ColorPalette as ColorPaletteType, ColorScale } from '../colors/palette';
 
 // Компонент для отображения одного цвета
 interface ColorSwatchProps {
   colorName: string;
   colorValue: string;
-  scale: string;
 }
 
-function ColorSwatch({ colorName, colorValue, scale }: ColorSwatchProps) {
+function ColorSwatch({ colorName, colorValue }: ColorSwatchProps) {
   return (
-    <div className="color-swatch">
-      <div 
-        className="color-preview" 
-        style={{ backgroundColor: colorValue }}
-        title={`${colorName} ${scale}`}
-      />
-      <span className="color-scale">{scale}</span>
-    </div>
-  );
-}
-
-// Компонент для отображения всех оттенков одного цвета
-interface ColorScaleProps {
-  colorName: string;
-  colorScales: Record<string, string>;
-}
-
-function ColorScale({ colorName, colorScales }: ColorScaleProps) {
-  return (
-    <div className="color-scale-container">
-      <h3 className="color-name">{colorName}</h3>
-      <div className="color-scales">
-        {Object.entries(colorScales).map(([scale, value]) => (
-          <ColorSwatch
-            key={scale}
-            colorName={colorName}
-            colorValue={value}
-            scale={scale}
-          />
-        ))}
-      </div>
-    </div>
+    <div 
+      className="color-swatch" 
+      style={{ backgroundColor: colorValue }}
+      title={`${colorName}`}
+    />
   );
 }
 
@@ -109,24 +81,9 @@ function SettingsPanel({ theme, toggleTheme, selectedCategory, onCategoryChange 
 export function ColorPalette() {
   const { theme, toggleTheme } = useTheme();
   const colors = useColors();
-  const [selectedCategory, setSelectedCategory] = useState('neutral');
 
-  // Категории цветов
-  const colorCategories = {
-    neutral: ['gray', 'mauve', 'slate', 'sage', 'olive', 'sand'],
-    red: ['tomato', 'red', 'ruby', 'crimson'],
-    pink: ['pink', 'plum', 'purple', 'violet', 'indigo'],
-    blue: ['blue', 'cyan', 'teal'],
-    green: ['green', 'grass'],
-    brown: ['brown'],
-    orange: ['orange'],
-    sky: ['sky'],
-    mint: ['mint'],
-    lime: ['lime'],
-    yellow: ['yellow', 'amber', 'gold', 'bronze'],
-  };
-
-  const currentColors = colorCategories[selectedCategory as keyof typeof colorCategories] || [];
+  // Все цвета в одном массиве
+  const allColors = Object.keys(colors) as (keyof ColorPaletteType)[];
 
   return (
     <div className="color-palette-container">
@@ -134,25 +91,39 @@ export function ColorPalette() {
         <SettingsPanel
           theme={theme}
           toggleTheme={toggleTheme}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
+          selectedCategory=""
+          onCategoryChange={() => {}}
         />
       </div>
 
       <div className="content-area">
         <div className="content-header">
           <h1>Radix UI Color Palette</h1>
-          <p>Complete color system with {Object.keys(colors).length} color scales</p>
+          <p>Complete color system with {allColors.length} color scales</p>
         </div>
 
         <div className="palette-content">
-          <div className="palette-grid">
-            {currentColors.map(colorName => (
-              <ColorScale
-                key={colorName}
-                colorName={colorName}
-                colorScales={getColorScales(colors, colorName as keyof ColorPaletteType)}
-              />
+          <div className="color-table">
+            {/* Заголовок с номерами шагов */}
+            <div className="table-header">
+              <div className="color-name-header">Color</div>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(scale => (
+                <div key={scale} className="scale-header">{scale}</div>
+              ))}
+            </div>
+
+            {/* Строки с цветами */}
+            {allColors.map(colorName => (
+              <div key={colorName} className="color-row">
+                <div className="color-name">{colorName}</div>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(scale => (
+                  <ColorSwatch
+                    key={scale}
+                    colorName={colorName}
+                    colorValue={getColor(colors, colorName, scale as keyof ColorScale)}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         </div>
@@ -206,56 +177,76 @@ export function ColorPalette() {
           padding: 2rem;
         }
 
-        .palette-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 1.5rem;
-        }
-
-        .color-scale-container {
+        .color-table {
           background: ${getColor(colors, 'gray', '2')};
           border-radius: 0.75rem;
-          padding: 1.25rem;
           border: 1px solid ${getColor(colors, 'gray', '6')};
+          overflow: hidden;
+        }
+
+        .table-header {
+          display: grid;
+          grid-template-columns: 120px repeat(12, 1fr);
+          background: ${getColor(colors, 'gray', '3')};
+          border-bottom: 1px solid ${getColor(colors, 'gray', '6')};
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+
+        .color-name-header, .scale-header {
+          padding: 1rem 0.5rem;
+          font-weight: 600;
+          text-align: center;
+          font-size: 0.9rem;
+          color: ${getColor(colors, 'gray', '12')};
+        }
+
+        .color-name-header {
+          text-align: left;
+          padding-left: 1rem;
+        }
+
+        .color-row {
+          display: grid;
+          grid-template-columns: 120px repeat(12, 1fr);
+          border-bottom: 1px solid ${getColor(colors, 'gray', '5')};
+          transition: background 0.2s ease;
+        }
+
+        .color-row:hover {
+          background: ${getColor(colors, 'gray', '3')};
+        }
+
+        .color-row:last-child {
+          border-bottom: none;
         }
 
         .color-name {
-          margin: 0 0 1rem 0;
-          font-size: 1.1rem;
+          padding: 1rem;
           font-weight: 600;
           text-transform: capitalize;
-        }
-
-        .color-scales {
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 0.375rem;
+          color: ${getColor(colors, 'gray', '12')};
+          display: flex;
+          align-items: center;
         }
 
         .color-swatch {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.25rem;
-        }
-
-        .color-preview {
           width: 100%;
-          height: 1.75rem;
-          border-radius: 0.25rem;
-          border: 1px solid ${getColor(colors, 'gray', '6')};
+          height: 3rem;
+          border-right: 1px solid ${getColor(colors, 'gray', '5')};
           cursor: pointer;
           transition: transform 0.15s ease;
+          position: relative;
         }
 
-        .color-preview:hover {
-          transform: scale(1.05);
+        .color-swatch:hover {
+          transform: scale(1.02);
+          z-index: 5;
         }
 
-        .color-scale {
-          font-size: 0.7rem;
-          font-weight: 500;
-          color: ${getColor(colors, 'gray', '11')};
+        .color-swatch:last-child {
+          border-right: none;
         }
 
         /* Settings Panel Styles */
@@ -356,13 +347,12 @@ export function ColorPalette() {
             padding: 1rem;
           }
 
-          .palette-grid {
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1rem;
+          .table-header, .color-row {
+            grid-template-columns: 100px repeat(12, 1fr);
           }
 
-          .color-scales {
-            grid-template-columns: repeat(4, 1fr);
+          .color-swatch {
+            height: 2.5rem;
           }
         }
 
@@ -375,12 +365,22 @@ export function ColorPalette() {
             padding: 1rem;
           }
 
-          .palette-grid {
-            grid-template-columns: 1fr;
+          .table-header, .color-row {
+            grid-template-columns: 80px repeat(12, 1fr);
           }
 
-          .color-scales {
-            grid-template-columns: repeat(3, 1fr);
+          .color-name-header, .scale-header {
+            padding: 0.75rem 0.25rem;
+            font-size: 0.8rem;
+          }
+
+          .color-name {
+            padding: 0.75rem;
+            font-size: 0.9rem;
+          }
+
+          .color-swatch {
+            height: 2rem;
           }
         }
       `}</style>
