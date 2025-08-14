@@ -9,9 +9,12 @@ interface ColorSwatchProps {
 }
 
 function ColorSwatch({ colorName, colorValue }: ColorSwatchProps) {
+  // Специальная обработка для прозрачных цветов (black/white)
+  const isTransparent = colorValue.includes('/');
+  
   return (
     <div 
-      className="color-swatch" 
+      className={`color-swatch ${isTransparent ? 'transparent' : ''}`}
       style={{ backgroundColor: colorValue }}
       title={`${colorName}`}
     />
@@ -247,6 +250,16 @@ export function ColorPalette() {
 
         .color-swatch:last-child {
           border-right: none;
+        }
+
+        .color-swatch.transparent {
+          background-image: 
+            linear-gradient(45deg, #ccc 25%, transparent 25%), 
+            linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+            linear-gradient(45deg, transparent 75%, #ccc 75%), 
+            linear-gradient(-45deg, transparent 75%, #ccc 75%);
+          background-size: 8px 8px;
+          background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
         }
 
         /* Settings Panel Styles */
