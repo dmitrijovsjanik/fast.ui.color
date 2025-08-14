@@ -216,12 +216,21 @@ export function ColorPalette() {
 
         .color-swatch.transparent {
           background-image: 
-            linear-gradient(45deg, #e5e5e5 25%, transparent 25%), 
-            linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), 
-            linear-gradient(45deg, transparent 75%, #e5e5e5 75%), 
-            linear-gradient(-45deg, transparent 75%, #e5e5e5 75%);
+            linear-gradient(45deg, grey 25%, transparent 25%), 
+            linear-gradient(-45deg, grey 25%, transparent 25%), 
+            linear-gradient(45deg, transparent 75%, grey 75%), 
+            linear-gradient(-45deg, transparent 75%, grey 75%);
           background-size: 16px 16px;
           background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+        }
+
+        /* Для темной темы - более темная сетка */
+        [data-theme="dark"] .color-swatch.transparent {
+          background-image: 
+            linear-gradient(45deg, #888 25%, transparent 25%), 
+            linear-gradient(-45deg, #888 25%, transparent 25%), 
+            linear-gradient(45deg, transparent 75%, #888 75%), 
+            linear-gradient(-45deg, transparent 75%, #888 75%);
         }
 
         /* Settings Panel Styles */
