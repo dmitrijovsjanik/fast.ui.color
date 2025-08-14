@@ -46,6 +46,8 @@ export interface ColorPalette {
   amber: ColorScale;
   gold: ColorScale;
   bronze: ColorScale;
+  black: ColorScale;
+  white: ColorScale;
 }
 
 // Light Theme Colors (Complete Radix UI Palette)

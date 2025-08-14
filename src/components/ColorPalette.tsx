@@ -89,8 +89,8 @@ export function ColorPalette() {
       <style jsx>{`
         .color-palette-container {
           height: 100vh;
-          background: ${getColor(colors, 'gray', '1')};
-          color: ${getColor(colors, 'gray', '12')};
+          background: ${getColor(colors, 'gray', 1)};
+          color: ${getColor(colors, 'gray', 12)};
           transition: all 0.3s ease;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
@@ -104,8 +104,8 @@ export function ColorPalette() {
 
         .content-header {
           padding: 1.5rem 2rem;
-          border-bottom: 1px solid ${getColor(colors, 'gray', '6')};
-          background: ${getColor(colors, 'gray', '1')};
+          border-bottom: 1px solid ${getColor(colors, 'gray', 6)};
+          background: ${getColor(colors, 'gray', 1)};
           flex-shrink: 0;
         }
 
@@ -124,7 +124,7 @@ export function ColorPalette() {
 
         .content-header p {
           margin: 0;
-          color: ${getColor(colors, 'gray', '11')};
+          color: ${getColor(colors, 'gray', 11)};
           font-size: 0.9rem;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
@@ -136,28 +136,31 @@ export function ColorPalette() {
         }
 
         .color-table {
-          background: ${getColor(colors, 'gray', '2')};
+          background: ${getColor(colors, 'gray', 2)};
           border-radius: 0.75rem;
-          border: 1px solid ${getColor(colors, 'gray', '6')};
+          border: 1px solid ${getColor(colors, 'gray', 6)};
           overflow: hidden;
+          border-spacing: 4px;
         }
 
         .table-header {
           display: grid;
           grid-template-columns: 120px repeat(12, 1fr);
-          background: ${getColor(colors, 'gray', '3')};
-          border-bottom: 1px solid ${getColor(colors, 'gray', '6')};
+          background: ${getColor(colors, 'gray', 3)};
+          border-bottom: 1px solid ${getColor(colors, 'gray', 6)};
           position: sticky;
           top: 0;
           z-index: 10;
+          gap: 4px;
+          padding: 4px;
         }
 
         .color-name-header, .scale-header {
-          padding: 1rem 0.5rem;
+          padding: 0.5rem;
           font-weight: 600;
           text-align: center;
           font-size: 0.9rem;
-          color: ${getColor(colors, 'gray', '12')};
+          color: ${getColor(colors, 'gray', 12)};
         }
 
         .color-name-header {
@@ -168,12 +171,14 @@ export function ColorPalette() {
         .color-row {
           display: grid;
           grid-template-columns: 120px repeat(12, 1fr);
-          border-bottom: 1px solid ${getColor(colors, 'gray', '5')};
+          border-bottom: 1px solid ${getColor(colors, 'gray', 5)};
           transition: background 0.2s ease;
+          gap: 4px;
+          padding: 4px;
         }
 
         .color-row:hover {
-          background: ${getColor(colors, 'gray', '3')};
+          background: ${getColor(colors, 'gray', 3)};
         }
 
         .color-row:last-child {
@@ -184,7 +189,7 @@ export function ColorPalette() {
           padding: 1rem;
           font-weight: 600;
           text-transform: capitalize;
-          color: ${getColor(colors, 'gray', '12')};
+          color: ${getColor(colors, 'gray', 12)};
           display: flex;
           align-items: center;
         }
@@ -192,7 +197,7 @@ export function ColorPalette() {
         .color-swatch {
           width: 100%;
           height: 3rem;
-          border-right: 1px solid ${getColor(colors, 'gray', '5')};
+          border-radius: 4px;
           cursor: pointer;
           transition: transform 0.15s ease;
           position: relative;
@@ -203,9 +208,7 @@ export function ColorPalette() {
           z-index: 5;
         }
 
-        .color-swatch:last-child {
-          border-right: none;
-        }
+
 
 
 
@@ -221,9 +224,9 @@ export function ColorPalette() {
           justify-content: center;
           width: 40px;
           height: 40px;
-          background: ${getColor(colors, 'gray', '3')};
-          color: ${getColor(colors, 'gray', '11')};
-          border: 1px solid ${getColor(colors, 'gray', '6')};
+          background: ${getColor(colors, 'gray', 3)};
+          color: ${getColor(colors, 'gray', 11)};
+          border: 1px solid ${getColor(colors, 'gray', 6)};
           border-radius: 0.5rem;
           cursor: pointer;
           transition: all 0.2s ease;
@@ -231,14 +234,14 @@ export function ColorPalette() {
         }
 
         .theme-toggle-btn:hover {
-          background: ${getColor(colors, 'gray', '4')};
-          border-color: ${getColor(colors, 'gray', '7')};
-          color: ${getColor(colors, 'gray', '12')};
+          background: ${getColor(colors, 'gray', 4)};
+          border-color: ${getColor(colors, 'gray', 7)};
+          color: ${getColor(colors, 'gray', 12)};
         }
 
         .theme-toggle-btn:focus {
           outline: none;
-          box-shadow: 0 0 0 2px ${getColor(colors, 'blue', '7')};
+          box-shadow: 0 0 0 2px ${getColor(colors, 'blue', 7)};
         }
 
         /* Responsive Design */
