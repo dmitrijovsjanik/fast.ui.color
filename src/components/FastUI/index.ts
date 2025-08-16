@@ -1,10 +1,11 @@
+export { FastUIDesign } from './FastUIDesign';
 export { Header } from './Header';
+export { Footer } from './Footer';
 export { Navigation } from './Navigation';
-export { Settings } from './Settings';
 export { ColorPalette } from './ColorPalette';
 export { AddColorRow } from './AddColorRow';
-export { Footer } from './Footer';
 export { CurveEditor } from './CurveEditor';
+export { Settings } from './Settings';
 export { KeyPointsInputs } from './KeyPointsInputs';
-export { CurveSelector } from './CurveSelector';
 export { ChromaInputs } from './ChromaInputs';
+export { ThemeManager } from './ThemeManager';
