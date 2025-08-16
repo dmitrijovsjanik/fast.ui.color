@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useTheme, useColors } from '../themes/themeProvider';
+import { useColors } from '../themes/themeProvider';
 import { getColor, ColorPalette as ColorPaletteType } from '../colors/palette';
 import { getPaletteByMode } from '../colors/paletteModes';
 
 export function PaletteModeDemo() {
-  const { theme, toggleTheme } = useTheme();
+
   const baseColors = useColors();
   const [selectedColor, setSelectedColor] = useState<keyof ColorPaletteType>('blue');
 

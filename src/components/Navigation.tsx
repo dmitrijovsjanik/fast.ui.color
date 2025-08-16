@@ -1,6 +1,6 @@
-import { useState } from 'react';
+
 import { useTheme } from '../themes/themeProvider';
-import { getColor } from '../colors/palette';
+import { getColor, lightColors, darkColors } from '../colors/palette';
 import { SunIcon, MoonIcon } from '@radix-ui/react-icons';
 
 export type ViewMode = 'figma' | 'exact' | 'standard' | 'demo' | 'comparison';
@@ -69,8 +69,8 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
           position: sticky;
           top: 0;
           z-index: 1000;
-          background: ${getColor(theme.isDark ? 'gray' : 'gray', 1)};
-          border-bottom: 1px solid ${getColor(theme.isDark ? 'gray' : 'gray', 6)};
+          background: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 1)};
+          border-bottom: 1px solid ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 6)};
           backdrop-filter: blur(10px);
         }
 
@@ -87,7 +87,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
           font-size: 1.5rem;
           font-weight: 700;
           margin: 0;
-          color: ${getColor(theme.isDark ? 'gray' : 'gray', 12)};
+          color: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 12)};
         }
 
         .nav-links {
@@ -102,20 +102,20 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
           border-radius: 0.5rem;
           cursor: pointer;
           transition: all 0.2s ease;
-          color: ${getColor(theme.isDark ? 'gray' : 'gray', 11)};
+          color: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 11)};
           font-size: 0.875rem;
           font-weight: 500;
         }
 
         .nav-link:hover {
-          background: ${getColor(theme.isDark ? 'gray' : 'gray', 3)};
-          color: ${getColor(theme.isDark ? 'gray' : 'gray', 12)};
+          background: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 3)};
+          color: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 12)};
         }
 
         .nav-link.active {
-          background: ${getColor(theme.isDark ? 'blue' : 'blue', 3)};
-          border-color: ${getColor(theme.isDark ? 'blue' : 'blue', 6)};
-          color: ${getColor(theme.isDark ? 'blue' : 'blue', 11)};
+          background: ${getColor(theme.isDark ? darkColors : lightColors, 'blue', 3)};
+          border-color: ${getColor(theme.isDark ? darkColors : lightColors, 'blue', 6)};
+          color: ${getColor(theme.isDark ? darkColors : lightColors, 'blue', 11)};
         }
 
         .nav-actions {
@@ -129,18 +129,18 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
           justify-content: center;
           width: 32px;
           height: 32px;
-          background: ${getColor(theme.isDark ? 'gray' : 'gray', 3)};
-          color: ${getColor(theme.isDark ? 'gray' : 'gray', 11)};
-          border: 1px solid ${getColor(theme.isDark ? 'gray' : 'gray', 6)};
+          background: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 3)};
+          color: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 11)};
+          border: 1px solid ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 6)};
           border-radius: 0.375rem;
           cursor: pointer;
           transition: all 0.2s ease;
         }
 
         .theme-toggle:hover {
-          background: ${getColor(theme.isDark ? 'gray' : 'gray', 4)};
-          border-color: ${getColor(theme.isDark ? 'gray' : 'gray', 7)};
-          color: ${getColor(theme.isDark ? 'gray' : 'gray', 12)};
+          background: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 4)};
+          border-color: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 7)};
+          color: ${getColor(theme.isDark ? darkColors : lightColors, 'gray', 12)};
         }
 
         @media (max-width: 768px) {

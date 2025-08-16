@@ -6,3 +6,4 @@ export { AddColorRow } from './AddColorRow';
 export { Footer } from './Footer';
 export { CurveEditor } from './CurveEditor';
 export { KeyPointsInputs } from './KeyPointsInputs';
+export { CurveSelector } from './CurveSelector';

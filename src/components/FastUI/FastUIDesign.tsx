@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Header, Navigation, Settings, ColorPalette, AddColorRow, Footer, KeyPointsInputs } from "./index";
-import { CurveEditor } from "./CurveEditor";
+import { CurveSelector, CurveType } from "./CurveSelector";
 import { ColorPaletteType, ColorPaletteData } from "../../types/FastUI";
 import { generatePaletteFromColor } from "../../utils/colorUtils";
 import { generateStatusColors } from "../../utils/colorAlgorithm";
 import { CurveSettings } from "../../types/curveEditor";
-import { bezierToKeyPoints } from "../../utils/curveUtils";
 import "../../styles/FastUI.css";
 
 export function FastUIDesign() {
   const [selectedScale, setSelectedScale] = useState<'Linear' | 'Semantic'>('Linear');
   const [selectedNaming, setSelectedNaming] = useState('50,100,150...');
+  const [curveType, setCurveType] = useState<CurveType>('custom');
   const [selectedColors, setSelectedColors] = useState<Record<ColorPaletteType, string>>({
     brand: '#3b82f6',
     accent: '#f59e0b',
@@ -43,44 +43,55 @@ export function FastUIDesign() {
   });
 
   // Настройки кривых
-  const [lightnessCurve, setLightnessCurve] = useState<CurveSettings>({
-    mode: 'keypoints',
-    keyPoints: bezierToKeyPoints({
-      startPoint: { x: 0, y: 0.98 },
-      endPoint: { x: 1, y: 0.08 },
-      controlPoint1: { x: 0.33, y: 0.8 },
-      controlPoint2: { x: 0.66, y: 0.3 }
-    }, selectedScale === 'Linear' ? 11 : 12),
-    bezierCurve: {
-      startPoint: { x: 0, y: 0.98 },
-      endPoint: { x: 1, y: 0.08 },
-      controlPoint1: { x: 0.33, y: 0.8 },
-      controlPoint2: { x: 0.66, y: 0.3 }
-    },
-    steps: selectedScale === 'Linear' ? 11 : 12
+  const [lightnessCurve, setLightnessCurve] = useState<CurveSettings>(() => {
+    const steps = selectedScale === 'Linear' ? 11 : 12;
+    const keyPoints = [];
+    for (let i = 0; i < steps; i++) {
+      const t = i / (steps - 1);
+      const y = 0.98 - (0.98 - 0.1) * t; // линейная интерполяция от 0.98 до 0.1
+      keyPoints.push({
+        id: `point-${i}`,
+        y: y
+      });
+    }
+    
+    return {
+      mode: 'keypoints',
+      keyPoints: keyPoints,
+      bezierCurve: {
+        startPoint: { x: 0, y: 0.98 },
+        endPoint: { x: 1, y: 0.1 },
+        controlPoint1: { x: 0.33, y: 0.33 },
+        controlPoint2: { x: 0.66, y: 0.66 }
+      },
+      steps: steps
+    };
   });
 
-  const [chromaCurve, setChromaCurve] = useState<CurveSettings>({
-    mode: 'bezier',
-    keyPoints: [],
-    bezierCurve: {
-      startPoint: { x: 0, y: 0.1 },
-      endPoint: { x: 1, y: 0.1 },
-      controlPoint1: { x: 0.5, y: 1.0 },
-      controlPoint2: { x: 0.5, y: 1.0 }
-    },
-    steps: selectedScale === 'Linear' ? 11 : 12
-  });
+
 
   // Обновление количества шагов при изменении масштаба
   useEffect(() => {
     const newSteps = selectedScale === 'Linear' ? 11 : 12;
-    setLightnessCurve(prev => ({ 
-      ...prev, 
-      steps: newSteps,
-      keyPoints: bezierToKeyPoints(prev.bezierCurve, newSteps)
-    }));
-    setChromaCurve(prev => ({ ...prev, steps: newSteps }));
+    setLightnessCurve(prev => {
+      // Создаем новые ключевые точки с правильным количеством
+      const newKeyPoints = [];
+      for (let i = 0; i < newSteps; i++) {
+        const t = i / (newSteps - 1);
+        const y = 0.98 - (0.98 - 0.1) * t; // линейная интерполяция от 0.98 до 0.1
+        newKeyPoints.push({
+          id: `point-${i}`,
+          y: y
+        });
+      }
+      
+      return { 
+        ...prev, 
+        steps: newSteps,
+        keyPoints: newKeyPoints
+      };
+    });
+
   }, [selectedScale]);
 
   // Генерация автоматических цветов на основе бренд-цвета
@@ -143,11 +154,39 @@ export function FastUIDesign() {
     const value = parseFloat(newValue);
     if (isNaN(value) || value < 0 || value > 1) return;
     
-    const newKeyPoints = lightnessCurve.keyPoints.map(point =>
+    let newKeyPoints = lightnessCurve.keyPoints.map(point =>
       point.id === pointId ? { ...point, y: value } : point
     );
+    
+    // Если это линейная или S-образная кривая, пересчитываем промежуточные точки
+    if (curveType === 'linear' || curveType === 's-curve') {
+      const firstPoint = newKeyPoints[0];
+      const lastPoint = newKeyPoints[newKeyPoints.length - 1];
+      
+      if (curveType === 'linear') {
+        // Линейная интерполяция между крайними точками
+        for (let i = 1; i < newKeyPoints.length - 1; i++) {
+          const t = i / (newKeyPoints.length - 1);
+          newKeyPoints[i] = {
+            ...newKeyPoints[i],
+            y: firstPoint.y - (firstPoint.y - lastPoint.y) * t
+          };
+        }
+      } else if (curveType === 's-curve') {
+        // S-образная интерполяция
+        for (let i = 1; i < newKeyPoints.length - 1; i++) {
+          const t = i / (newKeyPoints.length - 1);
+          const sCurve = 3 * Math.pow(t, 2) - 2 * Math.pow(t, 3); // S-образная функция
+          newKeyPoints[i] = {
+            ...newKeyPoints[i],
+            y: firstPoint.y - (firstPoint.y - lastPoint.y) * sCurve
+          };
+        }
+      }
+    }
+    // В кастомном режиме не изменяем промежуточные точки - они остаются как есть
+    
     const newSettings = { ...lightnessCurve, keyPoints: newKeyPoints };
-    console.log('Updating lightness curve:', newSettings);
     setLightnessCurve(newSettings);
   };
 
@@ -233,10 +272,21 @@ export function FastUIDesign() {
               />
             ))}
             <AddColorRow placeholderCount={selectedScale === 'Linear' ? 11 : 12} />
-            <KeyPointsInputs 
-              keyPoints={lightnessCurve.keyPoints}
-              onKeyPointChange={handleKeyPointChange}
-            />
+            <div className="keypoints-inputs-row">
+              <CurveSelector
+                currentCurve={lightnessCurve}
+                onCurveChange={setLightnessCurve}
+                onCurveTypeChange={setCurveType}
+                curveType={curveType}
+              />
+              <div className="keypoints-inputs-container">
+                <KeyPointsInputs 
+                  keyPoints={lightnessCurve.keyPoints}
+                  onKeyPointChange={handleKeyPointChange}
+                  curveType={curveType}
+                />
+              </div>
+            </div>
           </div>
 
           <Footer />

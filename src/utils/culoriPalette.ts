@@ -9,17 +9,7 @@ function normalizeHue(h: number): number {
   return x < 0 ? x + 360 : x;
 }
 
-// Нейтральная шкала для серых цветов
-function neutralScale(chroma: number = 0.005): string[] {
-  const out: string[] = [];
-  STEPS.forEach(step => {
-    // Используем переданную хроматику для нейтрального серого
-    const c = chroma;
-    const l = 0.98 - (0.98 - 0.08) * Math.pow(step / 950, 2.5);
-    out.push(formatHex({ mode: 'oklch', l, c, h: 0 }));
-  });
-  return out;
-}
+
 
 // Linear алгоритм - генерирует абсолютно любой цвет в одном из шагов
 export function generateCuloriPalette(
@@ -71,7 +61,7 @@ export function generateCuloriPalette(
 
   const out: string[] = [];
 
-  STEPS.forEach((step, i) => {
+  STEPS.forEach((_step, i) => {
     // Если это позиция базового цвета, возвращаем его точно
     if (i === baseStepIndex) {
       out.push(baseHex);

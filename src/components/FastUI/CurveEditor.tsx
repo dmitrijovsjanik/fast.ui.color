@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { CurveEditorProps, CurveMode, KeyPoint, BezierCurve } from '../../types/curveEditor';
+import { useState, useRef, useEffect } from 'react';
+import { CurveEditorProps, CurveMode, BezierCurve } from '../../types/curveEditor';
 import { generateCurveValues, syncCurveModes, bezierToKeyPoints } from '../../utils/curveUtils';
 import './CurveEditor.css';
 

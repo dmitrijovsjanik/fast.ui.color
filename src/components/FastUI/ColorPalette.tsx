@@ -1,4 +1,4 @@
-import { generatePaletteFromColor } from '../../utils/colorUtils';
+
 import { ColorPaletteType } from '../../types/FastUI';
 import { isColorManuallyChanged } from '../../utils/colorAlgorithm';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';

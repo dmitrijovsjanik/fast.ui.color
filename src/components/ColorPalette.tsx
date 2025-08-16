@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTheme, useColors } from '../themes/themeProvider';
 import { getColor, ColorPalette as ColorPaletteType, ColorScale } from '../colors/palette';
 import { getPaletteByMode } from '../colors/paletteModes';

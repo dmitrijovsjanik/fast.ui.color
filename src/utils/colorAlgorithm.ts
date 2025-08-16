@@ -220,7 +220,7 @@ function getNeutralColor(brandColor: string): string {
     return h; // Сохраняем тот же оттенок
   };
   
-  const getNeutralS = (s: number): number => {
+  const getNeutralS = (_s: number): number => {
     // Очень низкая фиксированная насыщенность для нейтрального цвета
     return 3; // Фиксированная низкая хроматика
   };

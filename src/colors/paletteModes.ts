@@ -9,7 +9,7 @@ export function createSemanticPalette(baseColors: ColorPalette): ColorPalette {
     
     // Семантическая палитра использует все 12 оттенков с более тонкими переходами
     Object.entries(colorScale).forEach(([scale, color]) => {
-      semanticScale[scale as keyof ColorScale] = color;
+      (semanticScale as any)[scale] = color;
     });
     
     semanticPalette[colorName as keyof ColorPalette] = semanticScale;
