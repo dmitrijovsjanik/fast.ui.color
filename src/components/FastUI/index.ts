@@ -7,3 +7,4 @@ export { Footer } from './Footer';
 export { CurveEditor } from './CurveEditor';
 export { KeyPointsInputs } from './KeyPointsInputs';
 export { CurveSelector } from './CurveSelector';
+export { ChromaInputs } from './ChromaInputs';

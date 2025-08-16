@@ -6,13 +6,22 @@ import { converter } from 'culori';
 // =======================
 
 export type ApcaValue = number; // 0-108
+export type ChromaValue = number; // 0-0.4 (OKLCH chroma range)
 export type ColorType = 'brand' | 'accent' | 'info' | 'success' | 'error' | 'warning' | 'neutral';
+export type ChromaCurveType = 'parabolic' | 'linear' | 'custom';
 
 export interface ApcaConfig {
   minContrast: number;
   maxContrast: number;
   chroma: number;
   hue: number;
+}
+
+export interface ChromaConfig {
+  minChroma: ChromaValue;
+  maxChroma: ChromaValue;
+  curveType: ChromaCurveType;
+  customValues?: ChromaValue[];
 }
 
 export interface ApcaPaletteOptions {
@@ -34,6 +43,44 @@ const COLOR_CONFIGS: Record<ColorType, ApcaConfig> = {
   error: { minContrast: 40, maxContrast: 90, chroma: 0.2, hue: 0 },
   warning: { minContrast: 35, maxContrast: 85, chroma: 0.22, hue: 45 },
   neutral: { minContrast: 20, maxContrast: 70, chroma: 0.03, hue: 0 }
+};
+
+const CHROMA_CONFIGS: Record<ColorType, ChromaConfig> = {
+  brand: { 
+    minChroma: 0.05, 
+    maxChroma: 0.25, 
+    curveType: 'parabolic' 
+  },
+  accent: { 
+    minChroma: 0.08, 
+    maxChroma: 0.3, 
+    curveType: 'parabolic' 
+  },
+  info: { 
+    minChroma: 0.03, 
+    maxChroma: 0.2, 
+    curveType: 'linear' 
+  },
+  success: { 
+    minChroma: 0.05, 
+    maxChroma: 0.22, 
+    curveType: 'parabolic' 
+  },
+  error: { 
+    minChroma: 0.08, 
+    maxChroma: 0.25, 
+    curveType: 'parabolic' 
+  },
+  warning: { 
+    minChroma: 0.06, 
+    maxChroma: 0.28, 
+    curveType: 'parabolic' 
+  },
+  neutral: { 
+    minChroma: 0.01, 
+    maxChroma: 0.05, 
+    curveType: 'linear' 
+  }
 };
 
 // =======================
@@ -71,32 +118,98 @@ export function generateApcaValuesForType(
 }
 
 /**
+ * Генерирует параболические хроматические значения
+ */
+export function generateParabolicChromaValues(
+  minChroma: ChromaValue,
+  maxChroma: ChromaValue,
+  steps: number
+): ChromaValue[] {
+  const values: ChromaValue[] = [];
+  
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    // Параболическая кривая: максимум в центре, минимумы по краям
+    const parabolicT = 4 * t * (1 - t); // 4x(1-x) дает максимум 1 при x=0.5
+    const chroma = minChroma + (maxChroma - minChroma) * parabolicT;
+    values.push(Math.max(minChroma, Math.min(maxChroma, chroma)));
+  }
+  
+  return values;
+}
+
+/**
+ * Генерирует линейные хроматические значения
+ */
+export function generateLinearChromaValues(
+  minChroma: ChromaValue,
+  maxChroma: ChromaValue,
+  steps: number
+): ChromaValue[] {
+  const values: ChromaValue[] = [];
+  
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    const chroma = minChroma + (maxChroma - minChroma) * t;
+    values.push(Math.max(minChroma, Math.min(maxChroma, chroma)));
+  }
+  
+  return values;
+}
+
+/**
+ * Генерирует хроматические значения для конкретного типа цвета
+ */
+export function generateChromaValuesForType(
+  type: ColorType,
+  steps: number = 11,
+  customValues?: ChromaValue[]
+): ChromaValue[] {
+  const config = CHROMA_CONFIGS[type];
+  
+  if (config.curveType === 'custom' && customValues && customValues.length === steps) {
+    return customValues.map(v => Math.max(config.minChroma, Math.min(config.maxChroma, v)));
+  }
+  
+  switch (config.curveType) {
+    case 'parabolic':
+      return generateParabolicChromaValues(config.minChroma, config.maxChroma, steps);
+    case 'linear':
+    default:
+      return generateLinearChromaValues(config.minChroma, config.maxChroma, steps);
+  }
+}
+
+/**
  * Генерирует палитру на основе APCA значений
  */
 export function generatePaletteFromApcaValues(options: ApcaPaletteOptions): string[] {
   const { baseColor, apcaValues, colorType, background = '#ffffff' } = options;
   
-  // Получаем оттенок и хроматику из базового цвета
+  // Получаем оттенок из базового цвета
   const oklchColor = converter('oklch')(baseColor);
   if (!oklchColor) {
     console.error('Не удалось конвертировать цвет в OKLCH:', baseColor);
     return [];
   }
 
-  const { c, h } = oklchColor;
+  const { h } = oklchColor;
   const hue = (h ?? 0) % 360;
-  const chroma = c || COLOR_CONFIGS[colorType].chroma;
+  
+  // Генерируем хроматические значения для данного типа цвета
+  const chromaValues = generateChromaValuesForType(colorType, apcaValues.length);
 
   const palette: string[] = [];
 
   for (let i = 0; i < apcaValues.length; i++) {
     const apcaValue = apcaValues[i];
+    const chromaValue = chromaValues[i];
     
     try {
-      // Генерируем цвет с заданным APCA контрастом
+      // Генерируем цвет с заданным APCA контрастом и хроматикой
       const apcachColor = apcach(
         crToBg(background, apcaValue, 'apca'),
-        chroma,
+        chromaValue,
         hue,
         100,
         'p3'
@@ -106,7 +219,7 @@ export function generatePaletteFromApcaValues(options: ApcaPaletteOptions): stri
       const hexColor = apcachToCss(apcachColor, 'hex');
       palette.push(hexColor);
     } catch (error) {
-      console.warn(`Ошибка генерации цвета для APCA ${apcaValue}:`, error);
+      console.warn(`Ошибка генерации цвета для APCA ${apcaValue}, Chroma ${chromaValue}:`, error);
       // Fallback к базовому цвету
       palette.push(baseColor);
     }
@@ -208,10 +321,38 @@ export function clampApcaValue(value: number): ApcaValue {
 }
 
 /**
+ * Проверяет, является ли значение валидным хроматическим
+ */
+export function isValidChromaValue(value: number): value is ChromaValue {
+  return Number.isFinite(value) && value >= 0 && value <= 0.4;
+}
+
+/**
+ * Ограничивает значение диапазоном хроматики
+ */
+export function clampChromaValue(value: number): ChromaValue {
+  return Math.max(0, Math.min(0.4, value));
+}
+
+/**
  * Получает конфигурацию для типа цвета
  */
 export function getColorConfig(type: ColorType): ApcaConfig {
   return COLOR_CONFIGS[type];
+}
+
+/**
+ * Получает конфигурацию хроматики для типа цвета
+ */
+export function getChromaConfig(type: ColorType): ChromaConfig {
+  return CHROMA_CONFIGS[type];
+}
+
+/**
+ * Получает все конфигурации хроматики
+ */
+export function getAllChromaConfigs(): Record<ColorType, ChromaConfig> {
+  return CHROMA_CONFIGS;
 }
 
 /**

@@ -1,8 +1,9 @@
 export interface KeyPoint {
   id: string;
-  y: number; // 0-1 (значение яркости/хроматики) или APCA контраст (0-108)
+  y: number; // 0-1 (значение яркости/хроматики) или APCA контраст (0-108) или Chroma (0-0.4)
   locked?: boolean;
   isApcach?: boolean; // Флаг для определения типа значения
+  isChroma?: boolean; // Флаг для определения типа значения (хроматика)
 }
 
 export interface BezierCurve {
