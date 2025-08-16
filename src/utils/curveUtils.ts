@@ -160,12 +160,22 @@ export function generateLinearCurve(): CurveSettings {
 
 // Генерация S-образной кривой
 export function generateSCurve(): CurveSettings {
-  // Создаем S-образно распределенные точки от 0.98 до 0.1
+  // Создаем более выраженную S-образную кривую
   const keyPoints = [];
   for (let i = 0; i < 11; i++) {
     const t = i / 10; // от 0 до 1
-    const sCurve = 3 * Math.pow(t, 2) - 2 * Math.pow(t, 3); // S-образная функция
-    const y = 0.98 - (0.98 - 0.1) * sCurve; // S-образная интерполяция от 0.98 до 0.1
+    
+    // Более выраженная S-образная функция
+    let sCurve;
+    if (t < 0.5) {
+      // Первая половина - медленное изменение
+      sCurve = 2 * Math.pow(t, 3);
+    } else {
+      // Вторая половина - быстрое изменение
+      sCurve = 1 - 2 * Math.pow(1 - t, 3);
+    }
+    
+    const y = 0.98 - (0.98 - 0.1) * sCurve;
     keyPoints.push({
       id: `point-${i}`,
       y: y
