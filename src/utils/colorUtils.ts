@@ -8,6 +8,8 @@ export function generateTailwindPalette(
   opts?: {
     lightnessCurve?: CurveSettings;
     chromaCurve?: CurveSettings;
+    useApcach?: boolean;
+    colorType?: 'brand' | 'accent' | 'info' | 'success' | 'error' | 'warning' | 'neutral';
   }
 ): string[] {
   return generateCuloriPalette(baseColor, opts);
@@ -19,6 +21,8 @@ export function generateSemanticPalette(
   opts?: {
     lightnessCurve?: CurveSettings;
     chromaCurve?: CurveSettings;
+    useApcach?: boolean;
+    colorType?: 'brand' | 'accent' | 'info' | 'success' | 'error' | 'warning' | 'neutral';
   }
 ): string[] {
   return generateCuloriPalette(baseColor, { ...opts, selectedScale: 'Semantic' });
@@ -30,12 +34,19 @@ export function generatePaletteFromColor(
   count: number, 
   mode: 'Linear' | 'Semantic',
   lightnessCurve?: CurveSettings,
-  chromaCurve?: CurveSettings
+  chromaCurve?: CurveSettings,
+  apcachOptions?: {
+    useApcach?: boolean;
+    colorType?: 'brand' | 'accent' | 'info' | 'success' | 'error' | 'warning' | 'neutral';
+  }
 ): string[] {
+  const baseOpts = { lightnessCurve, chromaCurve };
+  const opts = apcachOptions ? { ...baseOpts, ...apcachOptions } : baseOpts;
+  
   if (mode === 'Linear') {
-    return generateTailwindPalette(color, count, { lightnessCurve, chromaCurve });
+    return generateTailwindPalette(color, count, opts);
   } else {
-    return generateSemanticPalette(color, { lightnessCurve, chromaCurve });
+    return generateSemanticPalette(color, opts);
   }
 }
 

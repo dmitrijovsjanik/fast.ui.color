@@ -1,10 +1,13 @@
 import { converter } from 'culori';
 import { CurveSettings } from '../types/curveEditor';
+import { generateApcachPaletteByType } from './apcachPalette';
 
 // Интерфейс для опций генерации палитры
 interface PaletteOptions {
   lightnessCurve?: CurveSettings;
   selectedScale?: 'Linear' | 'Semantic';
+  useApcach?: boolean; // Использовать APCA для генерации
+  colorType?: 'brand' | 'accent' | 'info' | 'success' | 'error' | 'warning' | 'neutral';
 }
 
 // =======================
@@ -177,6 +180,19 @@ function rgbToHex(r: number, g: number, b: number): string {
 
 // Генерация палитры из базового цвета с использованием нового алгоритма
 export function generateCuloriPalette(baseColor: string, opts: PaletteOptions = {}): string[] {
+  // Если включен APCA, используем его для генерации
+  if (opts.useApcach && opts.colorType) {
+    console.log('=== APCA АЛГОРИТМ ===');
+    console.log('Базовый цвет:', baseColor);
+    console.log('Тип цвета:', opts.colorType);
+    
+    const steps = opts.selectedScale === 'Linear' ? 11 : 12;
+    const apcachPalette = generateApcachPaletteByType(baseColor, opts.colorType, steps);
+    
+    console.log('APCA палитра:', apcachPalette);
+    return apcachPalette;
+  }
+
   // Конвертируем базовый цвет в OKLCH
   const oklchColor = converter('oklch')(baseColor);
   if (!oklchColor) {

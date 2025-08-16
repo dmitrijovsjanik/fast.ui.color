@@ -6,6 +6,7 @@ import { generatePaletteFromColor } from "../../utils/colorUtils";
 import { generateStatusColors } from "../../utils/colorAlgorithm";
 import { CurveSettings } from "../../types/curveEditor";
 import { generateVisuallyUniformLightness } from "../../utils/curveUtils";
+import { generateApcaValuesByType, convertApcaArrayToLightness } from "../../utils/apcachConverter";
 import "../../styles/FastUI.css";
 
 export function FastUIDesign() {
@@ -41,57 +42,62 @@ export function FastUIDesign() {
     neutral: []
   });
 
-  // Настройки кривых
-  const [lightnessCurve, setLightnessCurve] = useState<CurveSettings>(() => {
-    const steps = selectedScale === 'Linear' ? 11 : 12;
-    const visuallyUniformValues = generateVisuallyUniformLightness(0.98, 0.1, steps);
-    
-    const keyPoints = [];
-    for (let i = 0; i < steps; i++) {
-      keyPoints.push({
-        id: `point-${i}`,
-        y: visuallyUniformValues[i]
-      });
-    }
-    
-    return {
-      mode: 'keypoints',
-      keyPoints: keyPoints,
-      bezierCurve: {
-        startPoint: { x: 0, y: 0.98 },
-        endPoint: { x: 1, y: 0.1 },
-        controlPoint1: { x: 0.33, y: 0.33 },
-        controlPoint2: { x: 0.66, y: 0.66 }
-      },
-      steps: steps
-    };
-  });
+           // Настройки кривых
+         const [lightnessCurve, setLightnessCurve] = useState<CurveSettings>(() => {
+           const steps = selectedScale === 'Linear' ? 11 : 12;
+           // Генерируем APCA значения для бренд-цвета
+           const apcaValues = generateApcaValuesByType('brand', steps);
+           const lightnessValues = convertApcaArrayToLightness(apcaValues);
+           
+           const keyPoints = [];
+           for (let i = 0; i < steps; i++) {
+             keyPoints.push({
+               id: `point-${i}`,
+               y: lightnessValues[i],
+               isApcach: true
+             });
+           }
+           
+           return {
+             mode: 'keypoints',
+             keyPoints: keyPoints,
+             bezierCurve: {
+               startPoint: { x: 0, y: 0.98 },
+               endPoint: { x: 1, y: 0.1 },
+               controlPoint1: { x: 0.33, y: 0.33 },
+               controlPoint2: { x: 0.66, y: 0.66 }
+             },
+             steps: steps
+           };
+         });
 
 
 
-  // Обновление количества шагов при изменении масштаба
-  useEffect(() => {
-    const newSteps = selectedScale === 'Linear' ? 11 : 12;
-    setLightnessCurve(prev => {
-      // Создаем новые ключевые точки с визуально равномерным распределением
-      const visuallyUniformValues = generateVisuallyUniformLightness(0.98, 0.1, newSteps);
-      
-      const newKeyPoints = [];
-      for (let i = 0; i < newSteps; i++) {
-        newKeyPoints.push({
-          id: `point-${i}`,
-          y: visuallyUniformValues[i]
-        });
-      }
-      
-      return { 
-        ...prev, 
-        steps: newSteps,
-        keyPoints: newKeyPoints
-      };
-    });
-
-  }, [selectedScale]);
+           // Обновление количества шагов при изменении масштаба
+         useEffect(() => {
+           const newSteps = selectedScale === 'Linear' ? 11 : 12;
+           setLightnessCurve(prev => {
+             // Создаем новые ключевые точки с APCA значениями
+             const apcaValues = generateApcaValuesByType('brand', newSteps);
+             const lightnessValues = convertApcaArrayToLightness(apcaValues);
+             
+             const newKeyPoints = [];
+             for (let i = 0; i < newSteps; i++) {
+               newKeyPoints.push({
+                 id: `point-${i}`,
+                 y: lightnessValues[i],
+                 isApcach: true
+               });
+             }
+             
+             return { 
+               ...prev, 
+               steps: newSteps,
+               keyPoints: newKeyPoints
+             };
+           });
+         
+         }, [selectedScale]);
 
   // Генерация автоматических цветов на основе бренд-цвета
   const generateAutoColors = (brandColor: string) => {
@@ -119,22 +125,24 @@ export function FastUIDesign() {
       
       console.log('Обновленные selectedColors:', updated);
       
-      // Обновляем палитры для измененных цветов
-      if (Object.keys(colorsToUpdate).length > 0) {
-        setColorPalettes(prevPalettes => {
-          const updatedPalettes = { ...prevPalettes };
-          Object.entries(colorsToUpdate).forEach(([type, color]) => {
-            updatedPalettes[type as ColorPaletteType] = generatePaletteFromColor(
-              color, 
-              selectedScale === 'Linear' ? 11 : 12, 
-              selectedScale, 
-              lightnessCurve
-            );
-          });
-          console.log('Обновленные палитры после генерации:', updatedPalettes);
-          return updatedPalettes;
-        });
-      }
+                   // Обновляем палитры для измененных цветов
+             if (Object.keys(colorsToUpdate).length > 0) {
+               setColorPalettes(prevPalettes => {
+                 const updatedPalettes = { ...prevPalettes };
+                 Object.entries(colorsToUpdate).forEach(([type, color]) => {
+                   updatedPalettes[type as ColorPaletteType] = generatePaletteFromColor(
+                     color, 
+                     selectedScale === 'Linear' ? 11 : 12, 
+                     selectedScale, 
+                     lightnessCurve,
+                     undefined,
+                     { useApcach: true, colorType: type as ColorPaletteType }
+                   );
+                 });
+                 console.log('Обновленные палитры после генерации:', updatedPalettes);
+                 return updatedPalettes;
+               });
+             }
       
       return updated;
     });
@@ -149,16 +157,16 @@ export function FastUIDesign() {
     };
   };
 
-  // Debounced функция для обновления палитр
-  const debouncedUpdatePalette = useCallback(
-    debounce((type: ColorPaletteType, color: string) => {
-      setColorPalettes(prev => ({
-        ...prev,
-        [type]: generatePaletteFromColor(color, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
-      }));
-    }, 100),
-    [selectedScale, lightnessCurve]
-  );
+           // Debounced функция для обновления палитр
+         const debouncedUpdatePalette = useCallback(
+           debounce((type: ColorPaletteType, color: string) => {
+             setColorPalettes(prev => ({
+               ...prev,
+               [type]: generatePaletteFromColor(color, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: type })
+             }));
+           }, 100),
+           [selectedScale, lightnessCurve]
+         );
 
   // Debounced функция для генерации автоматических цветов
   const debouncedGenerateAutoColors = useCallback(
@@ -202,11 +210,11 @@ export function FastUIDesign() {
       return newSet;
     });
     
-    // Принудительно обновляем палитру для сброшенного цвета
-    setColorPalettes(prev => ({
-      ...prev,
-      [type]: generatePaletteFromColor(autoGeneratedColors[type], selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
-    }));
+               // Принудительно обновляем палитру для сброшенного цвета
+           setColorPalettes(prev => ({
+             ...prev,
+             [type]: generatePaletteFromColor(autoGeneratedColors[type], selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: type })
+           }));
   };
 
 
@@ -270,31 +278,31 @@ export function FastUIDesign() {
     { type: 'neutral', name: 'Neutral', selectedColor: selectedColors.neutral }
   ];
 
-  // Инициализация палитр при монтировании
-  useEffect(() => {
-    const initialPalettes: Record<ColorPaletteType, string[]> = {
-      brand: generatePaletteFromColor(selectedColors.brand, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      accent: generatePaletteFromColor(selectedColors.accent, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      info: generatePaletteFromColor(selectedColors.info, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      success: generatePaletteFromColor(selectedColors.success, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      error: generatePaletteFromColor(selectedColors.error, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      warning: generatePaletteFromColor(selectedColors.warning, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      neutral: generatePaletteFromColor(selectedColors.neutral, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
-    };
-    setColorPalettes(initialPalettes);
-  }, [lightnessCurve]);
+           // Инициализация палитр при монтировании
+         useEffect(() => {
+           const initialPalettes: Record<ColorPaletteType, string[]> = {
+             brand: generatePaletteFromColor(selectedColors.brand, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'brand' }),
+             accent: generatePaletteFromColor(selectedColors.accent, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'accent' }),
+             info: generatePaletteFromColor(selectedColors.info, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'info' }),
+             success: generatePaletteFromColor(selectedColors.success, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'success' }),
+             error: generatePaletteFromColor(selectedColors.error, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'error' }),
+             warning: generatePaletteFromColor(selectedColors.warning, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'warning' }),
+             neutral: generatePaletteFromColor(selectedColors.neutral, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'neutral' })
+           };
+           setColorPalettes(initialPalettes);
+         }, [lightnessCurve]);
 
   // Обновление палитр при изменении цветов, масштаба или кривых
   useEffect(() => {
     console.log('Обновляем палитры для цветов:', selectedColors);
     const updatedPalettes: Record<ColorPaletteType, string[]> = {
-      brand: generatePaletteFromColor(selectedColors.brand, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      accent: generatePaletteFromColor(selectedColors.accent, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      info: generatePaletteFromColor(selectedColors.info, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      success: generatePaletteFromColor(selectedColors.success, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      error: generatePaletteFromColor(selectedColors.error, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      warning: generatePaletteFromColor(selectedColors.warning, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      neutral: generatePaletteFromColor(selectedColors.neutral, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
+      brand: generatePaletteFromColor(selectedColors.brand, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'brand' }),
+      accent: generatePaletteFromColor(selectedColors.accent, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'accent' }),
+      info: generatePaletteFromColor(selectedColors.info, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'info' }),
+      success: generatePaletteFromColor(selectedColors.success, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'success' }),
+      error: generatePaletteFromColor(selectedColors.error, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'error' }),
+      warning: generatePaletteFromColor(selectedColors.warning, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'warning' }),
+      neutral: generatePaletteFromColor(selectedColors.neutral, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve, undefined, { useApcach: true, colorType: 'neutral' })
     };
     console.log('Сгенерированные палитры:', updatedPalettes);
     setColorPalettes(updatedPalettes);
