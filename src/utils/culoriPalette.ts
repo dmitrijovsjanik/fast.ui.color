@@ -195,13 +195,13 @@ export function generateCuloriPalette(baseColor: string, opts: PaletteOptions = 
   const isNeutralColor = (c ?? 0) < 0.05;
   const adjustedChroma = isNeutralColor ? 0.03 : chroma;
   
-  // Генерируем палитру с новым алгоритмом
+  // Генерируем палитру с новым алгоритмом (от светлого к темному)
   const shades = generateSmoothShades({
     hue: hue,
     chroma: adjustedChroma,
     steps: steps,
-    Lmin: 0.08,    // как "950/900"
-    Lmax: 0.98,    // как "25/50"
+    Lmin: 0.98,    // как "25/50" (светлый)
+    Lmax: 0.08,    // как "950/900" (темный)
     easingK: 1.4   // сила сгущения в тенях
   });
 
@@ -216,14 +216,14 @@ export function generateCuloriPalette(baseColor: string, opts: PaletteOptions = 
 
 // Устаревшие функции (оставляем для совместимости)
 export function generateDefaultLightnessValues(): number[] {
-  // Используем новый алгоритм для генерации значений яркости
+  // Используем новый алгоритм для генерации значений яркости (от светлого к темному)
   const steps = 11;
   const values = [];
   
   for (let i = 0; i < steps; i++) {
     const t = i / (steps - 1);
     const te = schlickEase(t, 1.4);
-    const L = 0.08 + (0.98 - 0.08) * te;
+    const L = 0.98 - (0.98 - 0.08) * te; // От светлого к темному
     values.push(L);
   }
   
@@ -231,14 +231,14 @@ export function generateDefaultLightnessValues(): number[] {
 }
 
 export function generateDefaultChromaValues(): number[] {
-  // Используем chromaTaper для генерации значений хроматики
+  // Используем chromaTaper для генерации значений хроматики (от светлого к темному)
   const steps = 11;
   const values = [];
   
   for (let i = 0; i < steps; i++) {
     const t = i / (steps - 1);
     const te = schlickEase(t, 1.4);
-    const L = 0.08 + (0.98 - 0.08) * te;
+    const L = 0.98 - (0.98 - 0.08) * te; // От светлого к темному
     const C = 0.12 * chromaTaper(L, 0.08, 0.98);
     values.push(C);
   }
