@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Header, Navigation, Settings, ColorPalette, AddColorRow, Footer, KeyPointsInputs } from "./index";
 import { CurveSelector, CurveType } from "./CurveSelector";
 import { ColorPaletteType, ColorPaletteData } from "../../types/FastUI";
@@ -140,6 +140,34 @@ export function FastUIDesign() {
     });
   };
 
+  // Функция debounce
+  const debounce = (func: Function, delay: number) => {
+    let timeoutId: number;
+    return (...args: any[]) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    };
+  };
+
+  // Debounced функция для обновления палитр
+  const debouncedUpdatePalette = useCallback(
+    debounce((type: ColorPaletteType, color: string) => {
+      setColorPalettes(prev => ({
+        ...prev,
+        [type]: generatePaletteFromColor(color, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
+      }));
+    }, 100),
+    [selectedScale, lightnessCurve]
+  );
+
+  // Debounced функция для генерации автоматических цветов
+  const debouncedGenerateAutoColors = useCallback(
+    debounce((brandColor: string) => {
+      generateAutoColors(brandColor);
+    }, 150),
+    []
+  );
+
   // Обработчик изменения цвета
   const handleColorChange = (type: ColorPaletteType, color: string) => {
     console.log('Изменяем цвет:', type, 'на:', color);
@@ -151,15 +179,12 @@ export function FastUIDesign() {
       setManuallyChangedColors(prev => new Set(prev).add(type));
     }
     
-    // Если это бренд-цвет, генерируем автоматические цвета
+    // Если это бренд-цвет, используем debounced генерацию
     if (type === 'brand') {
-      generateAutoColors(color);
+      debouncedGenerateAutoColors(color);
     } else {
-      // Для всех остальных цветов обновляем только их палитру
-      setColorPalettes(prev => ({
-        ...prev,
-        [type]: generatePaletteFromColor(color, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
-      }));
+      // Для всех остальных цветов используем debounced обновление палитры
+      debouncedUpdatePalette(type, color);
     }
   };
 
