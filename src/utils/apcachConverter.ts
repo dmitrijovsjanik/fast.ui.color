@@ -3,6 +3,8 @@ import { apcach, crToBg, apcachToCss, cssToApcach } from 'apcach';
 // Конвертация APCA контраста в lightness (OKLCH L)
 export function apcaToLightness(apcaValue: number, background: string = '#ffffff'): number {
   try {
+    console.log('apcaToLightness input:', apcaValue);
+    
     // Создаем цвет с заданным APCA контрастом относительно белого фона
     const apcachColor = apcach(
       crToBg(background, apcaValue, 'apca'),
@@ -12,35 +14,56 @@ export function apcaToLightness(apcaValue: number, background: string = '#ffffff
       'p3'
     );
     
-    // Конвертируем в OKLCH для получения lightness
-    const oklchColor = cssToApcach(apcachToCss(apcachColor, 'oklch'), { bg: background });
+    console.log('apcachColor:', apcachColor);
     
-    // Извлекаем lightness из OKLCH
-    const lightness = parseFloat(oklchColor.split(' ')[1].replace('%', '')) / 100;
-    return Math.max(0, Math.min(1, lightness));
+    // Конвертируем в OKLCH для получения lightness
+    const oklchColor = apcachToCss(apcachColor, 'oklch');
+    
+    console.log('oklchColor:', oklchColor);
+    
+    // Извлекаем lightness из OKLCH (формат: oklch(L% C H))
+    const lightnessMatch = oklchColor.match(/oklch\(([^%]+)%/);
+    if (lightnessMatch) {
+      const lightness = parseFloat(lightnessMatch[1]) / 100;
+      console.log('extracted lightness:', lightness);
+      return Math.max(0, Math.min(1, lightness));
+    }
+    
+    throw new Error('Не удалось извлечь lightness из OKLCH');
   } catch (error) {
     console.warn('Ошибка конвертации APCA в lightness:', error);
-    // Fallback: линейная аппроксимация
-    return Math.max(0, Math.min(1, 1 - (apcaValue / 108)));
+    // Fallback: линейная аппроксимация (инвертированная)
+    const fallback = Math.max(0, Math.min(1, 1 - (apcaValue / 108)));
+    console.log('fallback lightness:', fallback);
+    return fallback;
   }
 }
 
 // Конвертация lightness (OKLCH L) в APCA контраст
 export function lightnessToApca(lightness: number, background: string = '#ffffff'): number {
   try {
+    console.log('lightnessToApca input:', lightness);
+    
     // Создаем цвет с заданной lightness
     const oklchColor = `oklch(${(lightness * 100).toFixed(1)}% 0.1 0)`;
+    
+    console.log('oklchColor:', oklchColor);
     
     // Конвертируем в apcach формат
     const apcachColor = cssToApcach(oklchColor, { bg: background });
     
-    // Извлекаем контраст из apcach
+    console.log('apcachColor:', apcachColor);
+    
+    // Извлекаем контраст из apcach (формат: "contrast chroma hue")
     const contrast = parseFloat(apcachColor.split(' ')[0]);
+    console.log('extracted contrast:', contrast);
     return Math.max(0, Math.min(108, contrast));
   } catch (error) {
     console.warn('Ошибка конвертации lightness в APCA:', error);
-    // Fallback: линейная аппроксимация
-    return Math.max(0, Math.min(108, (1 - lightness) * 108));
+    // Fallback: линейная аппроксимация (инвертированная)
+    const fallback = Math.max(0, Math.min(108, (1 - lightness) * 108));
+    console.log('fallback contrast:', fallback);
+    return fallback;
   }
 }
 

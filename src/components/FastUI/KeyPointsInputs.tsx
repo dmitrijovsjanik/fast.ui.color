@@ -17,13 +17,9 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
   useEffect(() => {
     const newValues: Record<string, string> = {};
     keyPoints.forEach(point => {
-      // Если это APCA значение, отображаем как есть, иначе конвертируем lightness в APCA
-      if (point.isApcach) {
-        newValues[point.id] = Math.round(point.y).toString();
-      } else {
-        const apcaValue = lightnessToApca(point.y);
-        newValues[point.id] = Math.round(apcaValue).toString();
-      }
+      // Всегда конвертируем lightness в APCA для отображения
+      const apcaValue = lightnessToApca(point.y);
+      newValues[point.id] = Math.round(apcaValue).toString();
     });
     setInputValues(newValues);
   }, [keyPoints]);
@@ -52,9 +48,7 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
     // При потере фокуса, если значение пустое или недопустимое, восстанавливаем исходное
     if (value === '' || value === '-' || isNaN(parseInt(value))) {
       const point = keyPoints.find(p => p.id === pointId);
-      const originalValue = point?.isApcach 
-        ? Math.round(point.y)
-        : Math.round(lightnessToApca(point?.y || 0));
+      const originalValue = Math.round(lightnessToApca(point?.y || 0));
       setInputValues(prev => ({ ...prev, [pointId]: originalValue.toString() }));
     }
   };
@@ -70,9 +64,7 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
       } else {
         // Если значение недопустимое, восстанавливаем исходное
         const point = keyPoints.find(p => p.id === pointId);
-        const originalValue = point?.isApcach 
-          ? Math.round(point.y)
-          : Math.round(lightnessToApca(point?.y || 0));
+        const originalValue = Math.round(lightnessToApca(point?.y || 0));
         setInputValues(prev => ({ ...prev, [pointId]: originalValue.toString() }));
       }
       (e.target as HTMLInputElement).blur();
