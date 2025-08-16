@@ -1,4 +1,4 @@
-import { generateCuloriPalette, generateSemanticPalette as generateCuloriSemanticPalette } from './culoriPalette';
+import { generateCuloriPalette } from './culoriPalette';
 import { CurveSettings } from '../types/curveEditor';
 
 // Генерация Tailwind-подобной палитры (Linear)
@@ -21,7 +21,7 @@ export function generateSemanticPalette(
     chromaCurve?: CurveSettings;
   }
 ): string[] {
-  return generateCuloriSemanticPalette(baseColor, opts);
+  return generateCuloriPalette(baseColor, { ...opts, selectedScale: 'Semantic' });
 }
 
 // Генерация палитры на основе цвета и режима
