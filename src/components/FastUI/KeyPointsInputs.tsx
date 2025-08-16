@@ -42,7 +42,7 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
   const handleInputBlur = (pointId: string, value: string) => {
     // При потере фокуса, если значение пустое или недопустимое, восстанавливаем исходное
     if (value === '' || value === '-' || isNaN(parseInt(value))) {
-      const originalValue = Math.round(keyPoints.find(p => p.id === pointId)?.y * 100 || 0);
+      const originalValue = Math.round((keyPoints.find(p => p.id === pointId)?.y || 0) * 100);
       setInputValues(prev => ({ ...prev, [pointId]: originalValue.toString() }));
     }
   };
@@ -55,7 +55,7 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
         onKeyPointChange(pointId, (percentValue / 100).toString());
       } else {
         // Если значение недопустимое, восстанавливаем исходное
-        const originalValue = Math.round(keyPoints.find(p => p.id === pointId)?.y * 100 || 0);
+        const originalValue = Math.round((keyPoints.find(p => p.id === pointId)?.y || 0) * 100);
         setInputValues(prev => ({ ...prev, [pointId]: originalValue.toString() }));
       }
       (e.target as HTMLInputElement).blur();

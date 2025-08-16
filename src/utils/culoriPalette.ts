@@ -2,7 +2,8 @@ import { converter, formatHex } from 'culori';
 import { CurveSettings } from '../types/curveEditor';
 import { generateCurveValues } from './curveUtils';
 
-const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const;
+// Шаги для Linear режима (11 шагов)
+const LINEAR_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const;
 
 function normalizeHue(h: number): number {
   let x = h % 360;
@@ -41,16 +42,15 @@ export function generateCuloriPalette(
   // Для нейтрального цвета используем фиксированную низкую хроматику
   const isNeutralColor = (base.c ?? 0) < 0.05;
   const chromaValues = isNeutralColor 
-    ? new Array(STEPS.length).fill(0.005) // Фиксированная низкая хроматика для нейтральных цветов
+    ? new Array(LINEAR_STEPS.length).fill(0.005) // Фиксированная низкая хроматика для нейтральных цветов
     : generateDefaultChromaValues(base.c ?? 0.08);
-  
-  console.log('CuloriPalette - lightnessValues:', lightnessValues);
-  console.log('CuloriPalette - opts.lightnessCurve:', opts.lightnessCurve);
 
-  // Определяем позицию ключевого цвета на основе его яркости
+  // Улучшенный алгоритм: находим позицию базового цвета в кривой
+  // и создаем палитру, где базовый цвет точно соответствует своей позиции
   let baseStepIndex = 5; // По умолчанию 500
   let minDiff = Infinity;
   
+  // Ищем ближайшее значение яркости из кривой к яркости базового цвета
   lightnessValues.forEach((targetL, index) => {
     const diff = Math.abs((base.l ?? 0.5) - targetL);
     if (diff < minDiff) {
@@ -61,14 +61,14 @@ export function generateCuloriPalette(
 
   const out: string[] = [];
 
-  STEPS.forEach((_step, i) => {
+  LINEAR_STEPS.forEach((_step: number, i: number) => {
     // Если это позиция базового цвета, возвращаем его точно
     if (i === baseStepIndex) {
       out.push(baseHex);
       return;
     }
 
-    // Используем значения из кривых
+    // Используем значения из кривых напрямую
     const targetL = lightnessValues[i];
     const targetC = chromaValues[i];
     
@@ -84,9 +84,10 @@ export function generateCuloriPalette(
 // Дефолтные значения для яркости (если кривая не настроена)
 function generateDefaultLightnessValues(): number[] {
   const values: number[] = [];
-  for (let i = 0; i < STEPS.length; i++) {
-    const t = i / (STEPS.length - 1);
-    values.push(0.98 - (0.98 - 0.08) * Math.pow(t, 2.5));
+  for (let i = 0; i < LINEAR_STEPS.length; i++) {
+    const t = i / (LINEAR_STEPS.length - 1);
+    // Более плавная кривая для лучшего соответствия с пользовательскими кривыми
+    values.push(0.98 - (0.98 - 0.08) * Math.pow(t, 1.8));
   }
   return values;
 }
@@ -94,11 +95,12 @@ function generateDefaultLightnessValues(): number[] {
 // Дефолтные значения для хроматики (если кривая не настроена)
 function generateDefaultChromaValues(baseC: number): number[] {
   const values: number[] = [];
-  for (let i = 0; i < STEPS.length; i++) {
-    const t = i / (STEPS.length - 1);
-    const curve = 1 - Math.pow((t - 0.5) * 2, 2);
-    const minChroma = Math.max(0.02, baseC * 0.2);
-    const maxChroma = Math.max(0.1, baseC * 1.2);
+  for (let i = 0; i < LINEAR_STEPS.length; i++) {
+    const t = i / (LINEAR_STEPS.length - 1);
+    // Более простая и предсказуемая кривая хроматики
+    const curve = Math.sin(t * Math.PI); // Синусоидальная кривая
+    const minChroma = Math.max(0.01, baseC * 0.1);
+    const maxChroma = Math.max(0.15, baseC * 1.5);
     values.push(minChroma + (maxChroma - minChroma) * curve);
   }
   return values;
