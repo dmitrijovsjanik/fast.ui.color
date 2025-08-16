@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { KeyPoint } from '../../types/curveEditor';
 import { CurveType } from './CurveSelector';
-import { lightnessToApca, apcaToLightness } from '../../utils/apcachConverter';
+
 
 interface KeyPointsInputsProps {
   keyPoints: KeyPoint[];
@@ -17,9 +17,8 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
   useEffect(() => {
     const newValues: Record<string, string> = {};
     keyPoints.forEach(point => {
-      // Всегда конвертируем lightness в APCA для отображения
-      const apcaValue = lightnessToApca(point.y);
-      newValues[point.id] = Math.round(apcaValue).toString();
+      // Используем APCA значения напрямую (point.y теперь содержит APCA)
+      newValues[point.id] = Math.round(point.y).toString();
     });
     setInputValues(newValues);
   }, [keyPoints]);
@@ -37,9 +36,8 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
     if (!isNaN(apcaValue) && apcaValue >= 0 && apcaValue <= 108) {
       // Добавляем небольшую задержку для более плавного ввода
       setTimeout(() => {
-        // Конвертируем APCA в lightness для внутреннего хранения
-        const lightness = apcaToLightness(apcaValue);
-        onKeyPointChange(pointId, lightness.toString());
+        // Передаем APCA значение напрямую
+        onKeyPointChange(pointId, apcaValue.toString());
       }, 100);
     }
   };
@@ -48,7 +46,7 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
     // При потере фокуса, если значение пустое или недопустимое, восстанавливаем исходное
     if (value === '' || value === '-' || isNaN(parseInt(value))) {
       const point = keyPoints.find(p => p.id === pointId);
-      const originalValue = Math.round(lightnessToApca(point?.y || 0));
+      const originalValue = Math.round(point?.y || 0);
       setInputValues(prev => ({ ...prev, [pointId]: originalValue.toString() }));
     }
   };
@@ -58,13 +56,12 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
     if (e.key === 'Enter') {
       const apcaValue = parseInt(value);
       if (!isNaN(apcaValue) && apcaValue >= 0 && apcaValue <= 108) {
-        // Конвертируем APCA в lightness для внутреннего хранения
-        const lightness = apcaToLightness(apcaValue);
-        onKeyPointChange(pointId, lightness.toString());
+        // Передаем APCA значение напрямую
+        onKeyPointChange(pointId, apcaValue.toString());
       } else {
         // Если значение недопустимое, восстанавливаем исходное
         const point = keyPoints.find(p => p.id === pointId);
-        const originalValue = Math.round(lightnessToApca(point?.y || 0));
+        const originalValue = Math.round(point?.y || 0);
         setInputValues(prev => ({ ...prev, [pointId]: originalValue.toString() }));
       }
       (e.target as HTMLInputElement).blur();

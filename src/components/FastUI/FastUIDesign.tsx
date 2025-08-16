@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { Header, Navigation, Settings, ColorPalette, AddColorRow, Footer, KeyPointsInputs } from "./index";
 import { CurveSelector, CurveType } from "./CurveSelector";
 import { ColorPaletteType, ColorPaletteData } from "../../types/FastUI";
-import { generatePaletteFromColor } from "../../utils/colorUtils";
+
 import { generateStatusColors } from "../../utils/colorAlgorithm";
 import { CurveSettings } from "../../types/curveEditor";
-import { generateVisuallyUniformLightness } from "../../utils/curveUtils";
-import { generateApcaValuesByType, convertApcaArrayToLightness } from "../../utils/apcachConverter";
+
+import { generateApcaValuesByType } from "../../utils/apcachConverter";
+import { generateApcaPaletteByType } from "../../utils/apcachPaletteGenerator";
 import "../../styles/FastUI.css";
 
 export function FastUIDesign() {
@@ -45,15 +46,14 @@ export function FastUIDesign() {
            // Настройки кривых
          const [lightnessCurve, setLightnessCurve] = useState<CurveSettings>(() => {
            const steps = selectedScale === 'Linear' ? 11 : 12;
-           // Генерируем APCA значения для бренд-цвета
-           const apcaValues = generateApcaValuesByType('brand', steps);
-           const lightnessValues = convertApcaArrayToLightness(apcaValues);
-           
-                       const keyPoints = [];
+                       // Генерируем APCA значения для бренд-цвета
+            const apcaValues = generateApcaValuesByType('brand', steps);
+            
+            const keyPoints = [];
             for (let i = 0; i < steps; i++) {
               keyPoints.push({
                 id: `point-${i}`,
-                y: lightnessValues[i]
+                y: apcaValues[i] // Используем APCA значения напрямую
               });
             }
            
@@ -76,17 +76,16 @@ export function FastUIDesign() {
          useEffect(() => {
            const newSteps = selectedScale === 'Linear' ? 11 : 12;
            setLightnessCurve(prev => {
-             // Создаем новые ключевые точки с APCA значениями
-             const apcaValues = generateApcaValuesByType('brand', newSteps);
-             const lightnessValues = convertApcaArrayToLightness(apcaValues);
-             
-                           const newKeyPoints = [];
-              for (let i = 0; i < newSteps; i++) {
-                newKeyPoints.push({
-                  id: `point-${i}`,
-                  y: lightnessValues[i]
-                });
-              }
+                         // Создаем новые ключевые точки с APCA значениями
+            const apcaValues = generateApcaValuesByType('brand', newSteps);
+            
+            const newKeyPoints = [];
+            for (let i = 0; i < newSteps; i++) {
+              newKeyPoints.push({
+                id: `point-${i}`,
+                y: apcaValues[i] // Используем APCA значения напрямую
+              });
+            }
              
              return { 
                ...prev, 
@@ -123,22 +122,22 @@ export function FastUIDesign() {
       
       console.log('Обновленные selectedColors:', updated);
       
-                                       // Обновляем палитры для измененных цветов
-              if (Object.keys(colorsToUpdate).length > 0) {
-                setColorPalettes(prevPalettes => {
-                  const updatedPalettes = { ...prevPalettes };
-                  Object.entries(colorsToUpdate).forEach(([type, color]) => {
-                    updatedPalettes[type as ColorPaletteType] = generatePaletteFromColor(
-                      color, 
-                      selectedScale === 'Linear' ? 11 : 12, 
-                      selectedScale, 
-                      lightnessCurve
-                    );
-                  });
-                  console.log('Обновленные палитры после генерации:', updatedPalettes);
-                  return updatedPalettes;
-                });
-              }
+                                                                               // Обновляем палитры для измененных цветов
+               if (Object.keys(colorsToUpdate).length > 0) {
+                 setColorPalettes(prevPalettes => {
+                   const updatedPalettes = { ...prevPalettes };
+                   const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+                   Object.entries(colorsToUpdate).forEach(([type, color]) => {
+                     updatedPalettes[type as ColorPaletteType] = generateApcaPaletteByType(
+                       color, 
+                       type as ColorPaletteType, 
+                       apcaValues
+                     );
+                   });
+                   console.log('Обновленные палитры после генерации:', updatedPalettes);
+                   return updatedPalettes;
+                 });
+               }
       
       return updated;
     });
@@ -153,16 +152,17 @@ export function FastUIDesign() {
     };
   };
 
-                       // Debounced функция для обновления палитр
-          const debouncedUpdatePalette = useCallback(
-            debounce((type: ColorPaletteType, color: string) => {
-              setColorPalettes(prev => ({
-                ...prev,
-                [type]: generatePaletteFromColor(color, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
-              }));
-            }, 100),
-            [selectedScale, lightnessCurve]
-          );
+                                               // Debounced функция для обновления палитр
+           const debouncedUpdatePalette = useCallback(
+             debounce((type: ColorPaletteType, color: string) => {
+               const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+               setColorPalettes(prev => ({
+                 ...prev,
+                 [type]: generateApcaPaletteByType(color, type, apcaValues)
+               }));
+             }, 100),
+             [lightnessCurve]
+           );
 
   // Debounced функция для генерации автоматических цветов
   const debouncedGenerateAutoColors = useCallback(
@@ -206,11 +206,12 @@ export function FastUIDesign() {
       return newSet;
     });
     
-                               // Принудительно обновляем палитру для сброшенного цвета
-            setColorPalettes(prev => ({
-              ...prev,
-              [type]: generatePaletteFromColor(autoGeneratedColors[type], selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
-            }));
+                                                               // Принудительно обновляем палитру для сброшенного цвета
+             const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+             setColorPalettes(prev => ({
+               ...prev,
+               [type]: generateApcaPaletteByType(autoGeneratedColors[type], type, apcaValues)
+             }));
   };
 
 
@@ -218,7 +219,7 @@ export function FastUIDesign() {
   // Обработчик изменения ключевых точек
   const handleKeyPointChange = (pointId: string, newValue: string) => {
     const value = parseFloat(newValue);
-    if (isNaN(value) || value < 0 || value > 1) return;
+    if (isNaN(value) || value < 0 || value > 108) return; // APCA диапазон 0-108
     
     let newKeyPoints = lightnessCurve.keyPoints.map(point =>
       point.id === pointId ? { ...point, y: value } : point
@@ -230,21 +231,16 @@ export function FastUIDesign() {
       const lastPoint = newKeyPoints[newKeyPoints.length - 1];
       
       if (curveType === 'linear') {
-        // Визуально равномерная интерполяция между крайними точками
-        const visuallyUniformValues = generateVisuallyUniformLightness(
-          firstPoint.y, 
-          lastPoint.y, 
-          newKeyPoints.length
-        );
-        
+        // Линейная интерполяция между крайними точками для APCA
         for (let i = 1; i < newKeyPoints.length - 1; i++) {
+          const t = i / (newKeyPoints.length - 1);
           newKeyPoints[i] = {
             ...newKeyPoints[i],
-            y: visuallyUniformValues[i]
+            y: firstPoint.y - (firstPoint.y - lastPoint.y) * t
           };
         }
       } else if (curveType === 's-curve') {
-        // S-образная интерполяция
+        // S-образная интерполяция для APCA
         for (let i = 1; i < newKeyPoints.length - 1; i++) {
           const t = i / (newKeyPoints.length - 1);
           const sCurve = 3 * Math.pow(t, 2) - 2 * Math.pow(t, 3); // S-образная функция
@@ -274,16 +270,17 @@ export function FastUIDesign() {
     { type: 'neutral', name: 'Neutral', selectedColor: selectedColors.neutral }
   ];
 
-                       // Инициализация палитр при монтировании
+                                               // Инициализация палитр при монтировании
           useEffect(() => {
+            const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
             const initialPalettes: Record<ColorPaletteType, string[]> = {
-              brand: generatePaletteFromColor(selectedColors.brand, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-              accent: generatePaletteFromColor(selectedColors.accent, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-              info: generatePaletteFromColor(selectedColors.info, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-              success: generatePaletteFromColor(selectedColors.success, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-              error: generatePaletteFromColor(selectedColors.error, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-              warning: generatePaletteFromColor(selectedColors.warning, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-              neutral: generatePaletteFromColor(selectedColors.neutral, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
+              brand: generateApcaPaletteByType(selectedColors.brand, 'brand', apcaValues),
+              accent: generateApcaPaletteByType(selectedColors.accent, 'accent', apcaValues),
+              info: generateApcaPaletteByType(selectedColors.info, 'info', apcaValues),
+              success: generateApcaPaletteByType(selectedColors.success, 'success', apcaValues),
+              error: generateApcaPaletteByType(selectedColors.error, 'error', apcaValues),
+              warning: generateApcaPaletteByType(selectedColors.warning, 'warning', apcaValues),
+              neutral: generateApcaPaletteByType(selectedColors.neutral, 'neutral', apcaValues)
             };
             setColorPalettes(initialPalettes);
           }, [lightnessCurve]);
@@ -291,14 +288,19 @@ export function FastUIDesign() {
   // Обновление палитр при изменении цветов, масштаба или кривых
   useEffect(() => {
     console.log('Обновляем палитры для цветов:', selectedColors);
+    
+    // Извлекаем APCA значения из кривой
+    const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+    console.log('APCA значения из кривой:', apcaValues);
+    
     const updatedPalettes: Record<ColorPaletteType, string[]> = {
-      brand: generatePaletteFromColor(selectedColors.brand, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      accent: generatePaletteFromColor(selectedColors.accent, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      info: generatePaletteFromColor(selectedColors.info, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      success: generatePaletteFromColor(selectedColors.success, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      error: generatePaletteFromColor(selectedColors.error, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      warning: generatePaletteFromColor(selectedColors.warning, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
-      neutral: generatePaletteFromColor(selectedColors.neutral, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
+      brand: generateApcaPaletteByType(selectedColors.brand, 'brand', apcaValues),
+      accent: generateApcaPaletteByType(selectedColors.accent, 'accent', apcaValues),
+      info: generateApcaPaletteByType(selectedColors.info, 'info', apcaValues),
+      success: generateApcaPaletteByType(selectedColors.success, 'success', apcaValues),
+      error: generateApcaPaletteByType(selectedColors.error, 'error', apcaValues),
+      warning: generateApcaPaletteByType(selectedColors.warning, 'warning', apcaValues),
+      neutral: generateApcaPaletteByType(selectedColors.neutral, 'neutral', apcaValues)
     };
     console.log('Сгенерированные палитры:', updatedPalettes);
     setColorPalettes(updatedPalettes);
