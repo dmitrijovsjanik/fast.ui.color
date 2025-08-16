@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Header, Navigation, Settings, ColorPalette, AddColorRow, Footer, KeyPointsInputs } from "./index";
+import { Header, Navigation, Settings, ColorPalette, AddColorRow, Footer, KeyPointsInputs, ChromaInputs } from "./index";
 import { CurveSelector, CurveType } from "./CurveSelector";
 import { ColorPaletteType, ColorPaletteData } from "../../types/FastUI";
 
@@ -8,7 +8,9 @@ import { CurveSettings } from "../../types/curveEditor";
 
 import { 
   generateApcaValuesForType, 
-  generatePaletteForType
+  generatePaletteForType,
+  generateChromaValuesForType,
+  ChromaCurveType
 } from "../../utils/apcaSystem";
 import "../../styles/FastUI.css";
 
@@ -49,7 +51,7 @@ export function FastUIDesign() {
          const [lightnessCurve, setLightnessCurve] = useState<CurveSettings>(() => {
            const steps = selectedScale === 'Linear' ? 11 : 12;
                        // Генерируем APCA значения для бренд-цвета
-            const apcaValues = generateApcaValuesForType('brand', steps);
+            const apcaValues = generateApcaValuesForType(steps);
             
             const keyPoints = [];
             for (let i = 0; i < steps; i++) {
@@ -72,6 +74,34 @@ export function FastUIDesign() {
            };
          });
 
+         // Настройки хроматической кривой
+         const [chromaCurve, setChromaCurve] = useState<CurveSettings>(() => {
+           const steps = selectedScale === 'Linear' ? 11 : 12;
+           const chromaValues = generateChromaValuesForType(steps);
+           
+           const keyPoints = [];
+           for (let i = 0; i < steps; i++) {
+             keyPoints.push({
+               id: `chroma-point-${i}`,
+               y: chromaValues[i], // Хроматические значения (0-0.4)
+               isChroma: true
+             });
+           }
+           
+           return {
+             mode: 'keypoints',
+             keyPoints: keyPoints,
+             bezierCurve: {
+               startPoint: { x: 0, y: 0.25 },
+               endPoint: { x: 1, y: 0.05 },
+               controlPoint1: { x: 0.33, y: 0.15 },
+               controlPoint2: { x: 0.66, y: 0.1 }
+             },
+             steps: steps
+           };
+         });
+
+         const [chromaCurveType, setChromaCurveType] = useState<ChromaCurveType>('parabolic');
 
 
            // Обновление количества шагов при изменении масштаба
@@ -79,7 +109,7 @@ export function FastUIDesign() {
            const newSteps = selectedScale === 'Linear' ? 11 : 12;
            setLightnessCurve(prev => {
                          // Создаем новые ключевые точки с APCA значениями
-            const apcaValues = generateApcaValuesForType('brand', newSteps);
+            const apcaValues = generateApcaValuesForType(newSteps);
             
             const newKeyPoints = [];
             for (let i = 0; i < newSteps; i++) {
@@ -96,6 +126,29 @@ export function FastUIDesign() {
              };
            });
          
+         }, [selectedScale]);
+
+         // Обновление хроматической кривой при изменении масштаба
+         useEffect(() => {
+           const newSteps = selectedScale === 'Linear' ? 11 : 12;
+           setChromaCurve(prev => {
+             const chromaValues = generateChromaValuesForType(newSteps);
+             
+             const newKeyPoints = [];
+             for (let i = 0; i < newSteps; i++) {
+               newKeyPoints.push({
+                 id: `chroma-point-${i}`,
+                 y: chromaValues[i],
+                 isChroma: true
+               });
+             }
+             
+             return {
+               ...prev,
+               steps: newSteps,
+               keyPoints: newKeyPoints
+             };
+           });
          }, [selectedScale]);
 
   // Генерация автоматических цветов на основе бренд-цвета
@@ -129,11 +182,13 @@ export function FastUIDesign() {
                  setColorPalettes(prevPalettes => {
                    const updatedPalettes = { ...prevPalettes };
                    const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+                   const chromaValues = chromaCurve.keyPoints.map(point => point.y);
                    Object.entries(colorsToUpdate).forEach(([type, color]) => {
                      updatedPalettes[type as ColorPaletteType] = generatePaletteForType(
                        color, 
                        type as ColorPaletteType, 
-                       apcaValues
+                       apcaValues,
+                       chromaValues
                      );
                    });
                    console.log('Обновленные палитры после генерации:', updatedPalettes);
@@ -158,12 +213,13 @@ export function FastUIDesign() {
            const debouncedUpdatePalette = useCallback(
              debounce((type: ColorPaletteType, color: string) => {
                const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+               const chromaValues = chromaCurve.keyPoints.map(point => point.y);
                setColorPalettes(prev => ({
                  ...prev,
-                 [type]: generatePaletteForType(color, type, apcaValues)
+                 [type]: generatePaletteForType(color, type, apcaValues, chromaValues)
                }));
              }, 100),
-             [lightnessCurve]
+             [lightnessCurve, chromaCurve]
            );
 
   // Debounced функция для генерации автоматических цветов
@@ -210,9 +266,10 @@ export function FastUIDesign() {
     
                                                                // Принудительно обновляем палитру для сброшенного цвета
              const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+             const chromaValues = chromaCurve.keyPoints.map(point => point.y);
              setColorPalettes(prev => ({
                ...prev,
-               [type]: generatePaletteForType(autoGeneratedColors[type], type, apcaValues)
+               [type]: generatePaletteForType(autoGeneratedColors[type], type, apcaValues, chromaValues)
              }));
   };
 
@@ -220,8 +277,12 @@ export function FastUIDesign() {
 
   // Обработчик изменения ключевых точек
   const handleKeyPointChange = (pointId: string, newValue: string) => {
-    const value = parseFloat(newValue);
-    if (isNaN(value) || value < 0 || value > 108) return; // APCA диапазон 0-108
+    console.log('APCA handleKeyPointChange вызван:', pointId, newValue);
+    const value = parseInt(newValue);
+    if (isNaN(value) || value < 0 || value > 108) {
+      console.log('Недопустимое значение APCA:', value);
+      return;
+    }
     
     let newKeyPoints = lightnessCurve.keyPoints.map(point =>
       point.id === pointId ? { ...point, y: value } : point
@@ -236,9 +297,10 @@ export function FastUIDesign() {
         // Линейная интерполяция между крайними точками для APCA
         for (let i = 1; i < newKeyPoints.length - 1; i++) {
           const t = i / (newKeyPoints.length - 1);
+          // Правильная линейная интерполяция: y = y1 + (y2 - y1) * t
           newKeyPoints[i] = {
             ...newKeyPoints[i],
-            y: firstPoint.y - (firstPoint.y - lastPoint.y) * t
+            y: Math.round(firstPoint.y + (lastPoint.y - firstPoint.y) * t)
           };
         }
       } else if (curveType === 's-curve') {
@@ -248,7 +310,7 @@ export function FastUIDesign() {
           const sCurve = 3 * Math.pow(t, 2) - 2 * Math.pow(t, 3); // S-образная функция
           newKeyPoints[i] = {
             ...newKeyPoints[i],
-            y: firstPoint.y - (firstPoint.y - lastPoint.y) * sCurve
+            y: Math.round(firstPoint.y + (lastPoint.y - firstPoint.y) * sCurve)
           };
         }
       }
@@ -256,7 +318,55 @@ export function FastUIDesign() {
     // В кастомном режиме не изменяем промежуточные точки - они остаются как есть
     
     const newSettings = { ...lightnessCurve, keyPoints: newKeyPoints };
+    console.log('Обновляем lightnessCurve:', newSettings);
     setLightnessCurve(newSettings);
+  };
+
+  // Обработчик изменения хроматических ключевых точек
+  const handleChromaKeyPointChange = (pointId: string, newValue: string) => {
+    console.log('Chroma handleChromaKeyPointChange вызван:', pointId, newValue);
+    const value = parseFloat(newValue);
+    if (isNaN(value) || value < 0 || value > 0.4) {
+      console.log('Недопустимое значение Chroma:', value);
+      return;
+    }
+    
+    let newKeyPoints = chromaCurve.keyPoints.map(point =>
+      point.id === pointId ? { ...point, y: value } : point
+    );
+    
+    // Если это параболическая кривая, пересчитываем промежуточные точки
+    if (chromaCurveType === 'parabolic') {
+      const firstPoint = newKeyPoints[0]; // Точка 1
+      const sixthPoint = newKeyPoints[5]; // Точка 6
+      
+      // Параболическая интерполяция между точками 1 и 6
+      for (let i = 1; i < newKeyPoints.length - 1; i++) {
+        const t = i / (newKeyPoints.length - 1);
+        const parabolic = 4 * t * (1 - t); // Параболическая функция
+        newKeyPoints[i] = {
+          ...newKeyPoints[i],
+          y: firstPoint.y + (sixthPoint.y - firstPoint.y) * parabolic
+        };
+      }
+    } else if (chromaCurveType === 'linear') {
+      const firstPoint = newKeyPoints[0];
+      const lastPoint = newKeyPoints[newKeyPoints.length - 1];
+      
+      // Линейная интерполяция между крайними точками для Chroma
+      for (let i = 1; i < newKeyPoints.length - 1; i++) {
+        const t = i / (newKeyPoints.length - 1);
+        newKeyPoints[i] = {
+          ...newKeyPoints[i],
+          y: firstPoint.y + (lastPoint.y - firstPoint.y) * t
+        };
+      }
+    }
+    // В кастомном режиме не изменяем промежуточные точки - они остаются как есть
+    
+    const newSettings = { ...chromaCurve, keyPoints: newKeyPoints };
+    console.log('Обновляем chromaCurve:', newSettings);
+    setChromaCurve(newSettings);
   };
 
 
@@ -275,17 +385,18 @@ export function FastUIDesign() {
                                                // Инициализация палитр при монтировании
           useEffect(() => {
             const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+            const chromaValues = chromaCurve.keyPoints.map(point => point.y);
             const initialPalettes: Record<ColorPaletteType, string[]> = {
-              brand: generatePaletteForType(selectedColors.brand, 'brand', apcaValues),
-              accent: generatePaletteForType(selectedColors.accent, 'accent', apcaValues),
-              info: generatePaletteForType(selectedColors.info, 'info', apcaValues),
-              success: generatePaletteForType(selectedColors.success, 'success', apcaValues),
-              error: generatePaletteForType(selectedColors.error, 'error', apcaValues),
-              warning: generatePaletteForType(selectedColors.warning, 'warning', apcaValues),
-              neutral: generatePaletteForType(selectedColors.neutral, 'neutral', apcaValues)
+              brand: generatePaletteForType(selectedColors.brand, 'brand', apcaValues, chromaValues),
+              accent: generatePaletteForType(selectedColors.accent, 'accent', apcaValues, chromaValues),
+              info: generatePaletteForType(selectedColors.info, 'info', apcaValues, chromaValues),
+              success: generatePaletteForType(selectedColors.success, 'success', apcaValues, chromaValues),
+              error: generatePaletteForType(selectedColors.error, 'error', apcaValues, chromaValues),
+              warning: generatePaletteForType(selectedColors.warning, 'warning', apcaValues, chromaValues),
+              neutral: generatePaletteForType(selectedColors.neutral, 'neutral', apcaValues, chromaValues)
             };
             setColorPalettes(initialPalettes);
-          }, [lightnessCurve]);
+          }, [lightnessCurve.keyPoints, chromaCurve.keyPoints, selectedColors]);
 
   // Обновление палитр при изменении цветов, масштаба или кривых
   useEffect(() => {
@@ -293,20 +404,23 @@ export function FastUIDesign() {
     
     // Извлекаем APCA значения из кривой
     const apcaValues = lightnessCurve.keyPoints.map(point => point.y);
+    // Извлекаем хроматические значения из кривой
+    const chromaValues = chromaCurve.keyPoints.map(point => point.y);
     console.log('APCA значения из кривой:', apcaValues);
+    console.log('Chroma значения из кривой:', chromaValues);
     
     const updatedPalettes: Record<ColorPaletteType, string[]> = {
-      brand: generatePaletteForType(selectedColors.brand, 'brand', apcaValues),
-      accent: generatePaletteForType(selectedColors.accent, 'accent', apcaValues),
-      info: generatePaletteForType(selectedColors.info, 'info', apcaValues),
-      success: generatePaletteForType(selectedColors.success, 'success', apcaValues),
-      error: generatePaletteForType(selectedColors.error, 'error', apcaValues),
-      warning: generatePaletteForType(selectedColors.warning, 'warning', apcaValues),
-      neutral: generatePaletteForType(selectedColors.neutral, 'neutral', apcaValues)
+      brand: generatePaletteForType(selectedColors.brand, 'brand', apcaValues, chromaValues),
+      accent: generatePaletteForType(selectedColors.accent, 'accent', apcaValues, chromaValues),
+      info: generatePaletteForType(selectedColors.info, 'info', apcaValues, chromaValues),
+      success: generatePaletteForType(selectedColors.success, 'success', apcaValues, chromaValues),
+      error: generatePaletteForType(selectedColors.error, 'error', apcaValues, chromaValues),
+      warning: generatePaletteForType(selectedColors.warning, 'warning', apcaValues, chromaValues),
+      neutral: generatePaletteForType(selectedColors.neutral, 'neutral', apcaValues, chromaValues)
     };
     console.log('Сгенерированные палитры:', updatedPalettes);
     setColorPalettes(updatedPalettes);
-  }, [selectedColors, selectedScale, lightnessCurve]);
+  }, [selectedColors, selectedScale, lightnessCurve.keyPoints, chromaCurve.keyPoints]);
 
   // Генерация автоматических цветов при изменении бренд-цвета
   useEffect(() => {
@@ -356,6 +470,12 @@ export function FastUIDesign() {
                 />
               </div>
             </div>
+            <ChromaInputs
+              keyPoints={chromaCurve.keyPoints}
+              onKeyPointChange={handleChromaKeyPointChange}
+              curveType={chromaCurveType}
+              onCurveTypeChange={setChromaCurveType}
+            />
           </div>
 
           <Footer />

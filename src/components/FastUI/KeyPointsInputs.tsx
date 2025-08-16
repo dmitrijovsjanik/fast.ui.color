@@ -24,6 +24,7 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
   }, [keyPoints]);
 
   const handleInputChange = (pointId: string, value: string) => {
+    console.log('KeyPointsInputs handleInputChange:', pointId, value);
     // Обновляем локальное состояние
     setInputValues(prev => ({ ...prev, [pointId]: value }));
 
@@ -34,11 +35,11 @@ export function KeyPointsInputs({ keyPoints, onKeyPointChange, curveType }: KeyP
 
     const apcaValue = parseInt(value);
     if (!isNaN(apcaValue) && apcaValue >= 0 && apcaValue <= 108) {
-      // Добавляем небольшую задержку для более плавного ввода
-      setTimeout(() => {
-        // Передаем APCA значение напрямую
-        onKeyPointChange(pointId, apcaValue.toString());
-      }, 100);
+      console.log('Вызываем onKeyPointChange:', pointId, apcaValue);
+      // Передаем APCA значение напрямую
+      onKeyPointChange(pointId, apcaValue.toString());
+    } else {
+      console.log('Недопустимое значение APCA:', apcaValue);
     }
   };
 
