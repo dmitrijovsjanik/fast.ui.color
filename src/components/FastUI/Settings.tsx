@@ -1,31 +1,31 @@
 import { useState } from 'react';
 
 interface SettingsProps {
-  selectedScale: string;
+  selectedScale: 'Linear' | 'Semantic';
   selectedNaming: string;
-  onScaleChange?: (scale: string) => void;
-  onNamingChange?: (naming: string) => void;
+  onScaleChange: (scale: 'Linear' | 'Semantic') => void;
+  onNamingChange: (naming: string) => void;
 }
 
 export function Settings({ 
   selectedScale, 
-  selectedNaming, 
-  onScaleChange, 
-  onNamingChange 
+  selectedNaming,
+  onScaleChange,
+  onNamingChange
 }: SettingsProps) {
   const [isScaleOpen, setIsScaleOpen] = useState(false);
   const [isNamingOpen, setIsNamingOpen] = useState(false);
 
-  const scaleOptions = ['Semantic', 'Linear'];
+  const scaleOptions: ('Linear' | 'Semantic')[] = ['Linear', 'Semantic'];
   const namingOptions = ['1,2,3...', '50,100,150...', 'A,B,C...'];
 
-  const handleScaleSelect = (scale: string) => {
-    onScaleChange?.(scale);
+  const handleScaleSelect = (scale: 'Linear' | 'Semantic') => {
+    onScaleChange(scale);
     setIsScaleOpen(false);
   };
 
   const handleNamingSelect = (naming: string) => {
-    onNamingChange?.(naming);
+    onNamingChange(naming);
     setIsNamingOpen(false);
   };
 

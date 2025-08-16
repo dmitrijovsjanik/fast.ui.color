@@ -1,0 +1,152 @@
+.curve-editor {
+  background: transparent;
+  padding: 8px 0;
+  margin: 0;
+  width: 100%;
+  max-width: 708px;
+  margin: 0 auto;
+}
+
+.curve-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.curve-mode-toggle {
+  display: flex;
+  gap: 3px;
+}
+
+.curve-mode-toggle button {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #6b7280;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.curve-mode-toggle button:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.curve-mode-toggle button.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.reset-curve-button {
+  padding: 4px 8px;
+  border: 1px solid #ef4444;
+  border-radius: 4px;
+  background: white;
+  color: #ef4444;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-curve-button:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.curve-canvas {
+  border-radius: 3px;
+  cursor: crosshair;
+  background: #fafafa;
+  width: 100%;
+  height: 88px;
+  margin-bottom: 4px;
+}
+
+.keypoints-list {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 4px;
+}
+
+.keypoints-list h4 {
+  margin: 0 0 6px 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.keypoints-inputs-row {
+  margin-top: 8px;
+  height: 44px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  display: flex;
+  width: 100%;
+}
+
+.keypoints-spacer {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.keypoints-inputs-container {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.keypoint-input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.149);
+  border-radius: 12px;
+  font-size: 12px;
+  text-align: center;
+  background: white;
+  box-sizing: border-box;
+}
+
+.keypoint-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+
+
+.keypoint-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 6px;
+  background: #f9fafb;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.keypoint-item button {
+  padding: 1px 4px;
+  border: 1px solid #ef4444;
+  border-radius: 2px;
+  background: white;
+  color: #ef4444;
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.keypoint-item button:hover {
+  background: #ef4444;
+  color: white;
+}

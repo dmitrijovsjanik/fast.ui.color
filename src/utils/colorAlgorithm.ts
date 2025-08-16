@@ -215,14 +215,14 @@ function getInfoColor(brandColor: string): string {
 function getNeutralColor(brandColor: string): string {
   const hsl = hexToHsl(brandColor);
   
-  // Для нейтрального цвета используем тот же оттенок, но с низкой насыщенностью
+  // Для нейтрального цвета используем тот же оттенок, но с очень низкой насыщенностью
   const getNeutralH = (h: number): number => {
     return h; // Сохраняем тот же оттенок
   };
   
   const getNeutralS = (s: number): number => {
-    // Низкая насыщенность для нейтрального цвета
-    return Math.max(5, Math.min(15, s * 0.1));
+    // Очень низкая фиксированная насыщенность для нейтрального цвета
+    return 3; // Фиксированная низкая хроматика
   };
   
   const getNeutralL = (l: number): number => {
@@ -239,8 +239,25 @@ function getNeutralColor(brandColor: string): string {
   return hslToHex(newH, newS, newL);
 }
 
+// Функция для генерации комплиментарного акцентного цвета
+function getAccentColor(brandColor: string): string {
+  const hsl = hexToHsl(brandColor);
+  
+  // Комплиментарный цвет - поворот на 180 градусов
+  const complementaryH = (hsl.h + 180) % 360;
+  
+  // Увеличиваем насыщенность для акцентного цвета
+  const accentS = Math.min(100, hsl.s + 10);
+  
+  // Слегка изменяем яркость
+  const accentL = Math.max(30, Math.min(70, hsl.l + 5));
+  
+  return hslToHex(complementaryH, accentS, accentL);
+}
+
 // Основная функция для генерации всех статусных цветов
 export function generateStatusColors(brandColor: string): {
+  accent: string;
   info: string;
   success: string;
   error: string;
@@ -248,6 +265,7 @@ export function generateStatusColors(brandColor: string): {
   neutral: string;
 } {
   return {
+    accent: getAccentColor(brandColor),
     info: getInfoColor(brandColor),
     success: getSuccessColor(brandColor),
     error: getErrorColor(brandColor),

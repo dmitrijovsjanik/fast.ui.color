@@ -6,9 +6,8 @@ export type NamingType = '1,2,3...' | 'A,B,C...' | 'Custom';
 
 export interface ColorPaletteData {
   type: ColorPaletteType;
-  locked: boolean;
-  editable: boolean;
-  colors?: string[];
+  name: string;
+  selectedColor: string;
 }
 
 export interface NavigationState {
