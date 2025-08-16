@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useTheme, useColors } from '../themes/themeProvider';
 import { getColor, ColorPalette as ColorPaletteType, ColorScale } from '../colors/palette';
-import { SunIcon, MoonIcon } from '@radix-ui/react-icons';
+import { getPaletteByMode } from '../colors/paletteModes';
+import { PaletteModeToggle, PaletteMode } from './PaletteModeToggle';
+import { SunIcon, MoonIcon, EyeOpenIcon, EyeClosedIcon } from '@radix-ui/react-icons';
 
 // Компонент для отображения одного цвета
 interface ColorSwatchProps {
@@ -56,14 +58,24 @@ function TableHeader() {
 interface SettingsPanelProps {
   theme: any;
   toggleTheme: () => void;
+  showAlpha: boolean;
+  toggleAlpha: () => void;
+  paletteMode: PaletteMode;
+  onPaletteModeChange: (mode: PaletteMode) => void;
 }
 
-function SettingsPanel({ theme, toggleTheme }: SettingsPanelProps) {
+function SettingsPanel({ theme, toggleTheme, showAlpha, toggleAlpha, paletteMode, onPaletteModeChange }: SettingsPanelProps) {
   return (
     <div className="settings-panel">
-      <button onClick={toggleTheme} className="theme-toggle-btn" title={`Switch to ${theme.isDark ? 'light' : 'dark'} theme`}>
-        {theme.isDark ? <SunIcon width={20} height={20} /> : <MoonIcon width={20} height={20} />}
-      </button>
+      <PaletteModeToggle mode={paletteMode} onModeChange={onPaletteModeChange} />
+      <div className="settings-buttons">
+        <button onClick={toggleAlpha} className="alpha-toggle-btn" title={`${showAlpha ? 'Hide' : 'Show'} alpha colors`}>
+          {showAlpha ? <EyeClosedIcon width={20} height={20} /> : <EyeOpenIcon width={20} height={20} />}
+        </button>
+        <button onClick={toggleTheme} className="theme-toggle-btn" title={`Switch to ${theme.isDark ? 'light' : 'dark'} theme`}>
+          {theme.isDark ? <SunIcon width={20} height={20} /> : <MoonIcon width={20} height={20} />}
+        </button>
+      </div>
     </div>
   );
 }
@@ -71,7 +83,12 @@ function SettingsPanel({ theme, toggleTheme }: SettingsPanelProps) {
 // Основной компонент палитры
 export function ColorPalette() {
   const { theme, toggleTheme } = useTheme();
-  const colors = useColors();
+  const baseColors = useColors();
+  const [showAlpha, setShowAlpha] = useState(false);
+  const [paletteMode, setPaletteMode] = useState<PaletteMode>('semantic');
+
+  // Получаем палитру в зависимости от выбранного режима
+  const colors = getPaletteByMode(baseColors, paletteMode);
 
   // Все цвета в одном массиве
   const allColors = Object.keys(colors) as (keyof ColorPaletteType)[];
@@ -83,11 +100,15 @@ export function ColorPalette() {
           <div className="header-content">
             <div>
               <h1>Radix UI Color Palette</h1>
-              <p>Complete color system with {allColors.length} color scales</p>
+              <p>Complete color system with {allColors.length} color scales • {paletteMode === 'semantic' ? 'Semantic' : 'Linear'} mode</p>
             </div>
             <SettingsPanel
               theme={theme}
               toggleTheme={toggleTheme}
+              showAlpha={showAlpha}
+              toggleAlpha={() => setShowAlpha(!showAlpha)}
+              paletteMode={paletteMode}
+              onPaletteModeChange={setPaletteMode}
             />
           </div>
         </div>
@@ -106,7 +127,7 @@ export function ColorPalette() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .color-palette-container {
           height: 100vh;
           background: ${getColor(colors, 'gray', 1)};
@@ -229,6 +250,13 @@ export function ColorPalette() {
         .settings-panel {
           display: flex;
           align-items: center;
+          gap: 1rem;
+        }
+
+        .settings-buttons {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
 
         .theme-toggle-btn {
@@ -255,6 +283,90 @@ export function ColorPalette() {
         .theme-toggle-btn:focus {
           outline: none;
           box-shadow: 0 0 0 2px ${getColor(colors, 'blue', 7)};
+        }
+
+        .alpha-toggle-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          background: ${getColor(colors, 'gray', 3)};
+          color: ${getColor(colors, 'gray', 11)};
+          border: 1px solid ${getColor(colors, 'gray', 6)};
+          border-radius: 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .alpha-toggle-btn:hover {
+          background: ${getColor(colors, 'gray', 4)};
+          border-color: ${getColor(colors, 'gray', 7)};
+          color: ${getColor(colors, 'gray', 12)};
+        }
+
+        .alpha-toggle-btn:focus {
+          outline: none;
+          box-shadow: 0 0 0 2px ${getColor(colors, 'blue', 7)};
+        }
+
+        /* Palette Mode Toggle Styles */
+        .palette-mode-toggle {
+          display: flex;
+          align-items: center;
+        }
+
+        .toggle-container {
+          display: flex;
+          background: ${getColor(colors, 'gray', 3)};
+          border: 1px solid ${getColor(colors, 'gray', 6)};
+          border-radius: 0.5rem;
+          padding: 0.25rem;
+          gap: 0.25rem;
+        }
+
+        .toggle-button {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 0.5rem 1rem;
+          background: transparent;
+          border: none;
+          border-radius: 0.25rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          color: ${getColor(colors, 'gray', 11)};
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          min-width: 80px;
+        }
+
+        .toggle-button.active {
+          background: ${getColor(colors, 'gray', 5)};
+          color: ${getColor(colors, 'gray', 12)};
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-button:hover:not(.active) {
+          background: ${getColor(colors, 'gray', 4)};
+          color: ${getColor(colors, 'gray', 12)};
+        }
+
+        .toggle-icon {
+          font-size: 1.2rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .toggle-label {
+          font-weight: 600;
+          font-size: 0.875rem;
+          margin-bottom: 0.125rem;
+        }
+
+        .toggle-description {
+          font-size: 0.75rem;
+          opacity: 0.7;
         }
 
         /* Responsive Design */

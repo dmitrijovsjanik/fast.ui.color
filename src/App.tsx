@@ -1,11 +1,10 @@
-import React from 'react';
 import { ThemeProvider } from './themes/themeProvider';
-import { ColorPalette } from './components/ColorPalette';
+import { FastUIDesign } from './components/FastUIDesign';
 
 function App() {
   return (
     <ThemeProvider defaultTheme="system">
-      <ColorPalette />
+      <FastUIDesign />
     </ThemeProvider>
   );
 }
