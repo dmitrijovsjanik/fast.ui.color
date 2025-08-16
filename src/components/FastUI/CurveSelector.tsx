@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChartBarIcon } from '@heroicons/react/24/outline';
 import { CurveSettings } from '../../types/curveEditor';
-import { generateLinearCurve, generateSCurve } from '../../utils/curveUtils';
+import { generateLinearCurve, generateSCurve, generateVisuallyUniformLightness } from '../../utils/curveUtils';
 
 export type CurveType = 'linear' | 's-curve' | 'custom';
 
@@ -72,12 +72,17 @@ export function CurveSelector({
         const lastPoint = newCurve.keyPoints[newCurve.keyPoints.length - 1];
         
         if (type === 'linear') {
-          // Линейная интерполяция между крайними точками
+          // Визуально равномерная интерполяция между крайними точками
+          const visuallyUniformValues = generateVisuallyUniformLightness(
+            firstPoint.y, 
+            lastPoint.y, 
+            newCurve.keyPoints.length
+          );
+          
           for (let i = 1; i < newCurve.keyPoints.length - 1; i++) {
-            const t = i / (newCurve.keyPoints.length - 1);
             newCurve.keyPoints[i] = {
               ...newCurve.keyPoints[i],
-              y: firstPoint.y - (firstPoint.y - lastPoint.y) * t
+              y: visuallyUniformValues[i]
             };
           }
         } else if (type === 's-curve') {

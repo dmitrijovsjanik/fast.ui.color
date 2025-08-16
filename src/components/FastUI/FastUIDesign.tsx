@@ -5,6 +5,7 @@ import { ColorPaletteType, ColorPaletteData } from "../../types/FastUI";
 import { generatePaletteFromColor } from "../../utils/colorUtils";
 import { generateStatusColors } from "../../utils/colorAlgorithm";
 import { CurveSettings } from "../../types/curveEditor";
+import { generateVisuallyUniformLightness } from "../../utils/curveUtils";
 import "../../styles/FastUI.css";
 
 export function FastUIDesign() {
@@ -45,13 +46,13 @@ export function FastUIDesign() {
   // Настройки кривых
   const [lightnessCurve, setLightnessCurve] = useState<CurveSettings>(() => {
     const steps = selectedScale === 'Linear' ? 11 : 12;
+    const visuallyUniformValues = generateVisuallyUniformLightness(0.98, 0.1, steps);
+    
     const keyPoints = [];
     for (let i = 0; i < steps; i++) {
-      const t = i / (steps - 1);
-      const y = 0.98 - (0.98 - 0.1) * t; // линейная интерполяция от 0.98 до 0.1
       keyPoints.push({
         id: `point-${i}`,
-        y: y
+        y: visuallyUniformValues[i]
       });
     }
     
@@ -74,14 +75,14 @@ export function FastUIDesign() {
   useEffect(() => {
     const newSteps = selectedScale === 'Linear' ? 11 : 12;
     setLightnessCurve(prev => {
-      // Создаем новые ключевые точки с правильным количеством
+      // Создаем новые ключевые точки с визуально равномерным распределением
+      const visuallyUniformValues = generateVisuallyUniformLightness(0.98, 0.1, newSteps);
+      
       const newKeyPoints = [];
       for (let i = 0; i < newSteps; i++) {
-        const t = i / (newSteps - 1);
-        const y = 0.98 - (0.98 - 0.1) * t; // линейная интерполяция от 0.98 до 0.1
         newKeyPoints.push({
           id: `point-${i}`,
-          y: y
+          y: visuallyUniformValues[i]
         });
       }
       
@@ -164,12 +165,17 @@ export function FastUIDesign() {
       const lastPoint = newKeyPoints[newKeyPoints.length - 1];
       
       if (curveType === 'linear') {
-        // Линейная интерполяция между крайними точками
+        // Визуально равномерная интерполяция между крайними точками
+        const visuallyUniformValues = generateVisuallyUniformLightness(
+          firstPoint.y, 
+          lastPoint.y, 
+          newKeyPoints.length
+        );
+        
         for (let i = 1; i < newKeyPoints.length - 1; i++) {
-          const t = i / (newKeyPoints.length - 1);
           newKeyPoints[i] = {
             ...newKeyPoints[i],
-            y: firstPoint.y - (firstPoint.y - lastPoint.y) * t
+            y: visuallyUniformValues[i]
           };
         }
       } else if (curveType === 's-curve') {

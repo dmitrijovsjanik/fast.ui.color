@@ -126,17 +126,16 @@ export function syncCurveModes(settings: CurveSettings): CurveSettings {
   }
 }
 
-// Генерация линейной кривой (равномерное распределение)
+// Генерация линейной кривой (визуально равномерное распределение)
 export function generateLinearCurve(): CurveSettings {
-  // Создаем 11 равномерно распределенных точек от 0.98 до 0.1
+  // Создаем 11 визуально равномерно распределенных точек от 0.98 до 0.1
+  const visuallyUniformValues = generateVisuallyUniformLightness(0.98, 0.1, 11);
+  
   const keyPoints = [];
   for (let i = 0; i < 11; i++) {
-    const t = i / 10; // от 0 до 1
-    // Идеально линейная интерполяция от 0.98 до 0.1
-    const y = 0.98 - (0.98 - 0.1) * t;
     keyPoints.push({
       id: `point-${i}`,
-      y: y
+      y: visuallyUniformValues[i]
     });
   }
 
@@ -253,7 +252,65 @@ export function testCurveLinearity(lightnessValues: number[]): void {
   
   console.log('Контрасты между соседними цветами:', contrasts.map((c, i) => `${i+1}-${i+2}: ${(c * 100).toFixed(1)}%`));
   
+  // Анализ визуального восприятия
+  console.log('=== АНАЛИЗ ВИЗУАЛЬНОГО ВОСПРИЯТИЯ ===');
+  console.log('Проблема: Oklch L не соответствует визуальному восприятию!');
+  console.log('Oklch L 100% = очень светлый, но визуально не воспринимается как "белый"');
+  console.log('Oklch L 90% = все еще очень светлый, но визуально различим');
+  console.log('Oklch L 80% = уже более заметный, но все еще светлый');
+  
+  // Предлагаем решение
+  console.log('=== РЕШЕНИЕ ===');
+  console.log('Нужно использовать нелинейную шкалу для визуально равномерных шагов');
+  console.log('Варианты:');
+  console.log('1. Использовать sRGB lightness (более близко к визуальному восприятию)');
+  console.log('2. Применить гамма-коррекцию к Oklch L');
+  console.log('3. Использовать Lab L* (более равномерно воспринимается)');
+  
   console.log('=== КОНЕЦ ТЕСТА ===');
+}
+
+// Функция для генерации визуально равномерных шагов яркости
+export function generateVisuallyUniformLightness(start: number, end: number, steps: number): number[] {
+  // Используем гамма-коррекцию для визуально равномерных шагов
+  // Гамма 2.2 примерно соответствует восприятию человека
+  const gamma = 2.2;
+  
+  const values: number[] = [];
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    
+    // Применяем гамма-коррекцию для визуально равномерных шагов
+    const gammaCorrectedT = Math.pow(t, 1 / gamma);
+    const y = start - (start - end) * gammaCorrectedT;
+    
+    values.push(y);
+  }
+  
+  return values;
+}
+
+// Альтернативная функция с использованием Lab L*
+export function generateLabUniformLightness(start: number, end: number, steps: number): number[] {
+  // Lab L* более равномерно воспринимается человеком
+  // Конвертируем Oklch L в Lab L* и обратно
+  const values: number[] = [];
+  
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    
+    // Линейная интерполяция в Lab L* пространстве
+    const labStart = Math.pow(start, 1/3) * 100; // Приблизительная конвертация
+    const labEnd = Math.pow(end, 1/3) * 100;
+    const labL = labStart - (labStart - labEnd) * t;
+    
+    // Конвертируем обратно в Oklch L
+    const oklchL = Math.pow(labL / 100, 3);
+    
+    values.push(oklchL);
+  }
+  
+  return values;
 }
 
 
