@@ -1,6 +1,6 @@
 import { converter, formatHex } from 'culori';
 import { CurveSettings } from '../types/curveEditor';
-import { generateCurveValues } from './curveUtils';
+import { generateCurveValues, testCurveLinearity } from './curveUtils';
 
 // Шаги для Linear режима (11 шагов)
 const LINEAR_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const;
@@ -38,6 +38,9 @@ export function generateCuloriPalette(
   const lightnessValues = opts.lightnessCurve 
     ? generateCurveValues(opts.lightnessCurve)
     : generateDefaultLightnessValues();
+  
+  // Тестируем линейность кривой
+  testCurveLinearity(lightnessValues);
   
   // Для нейтрального цвета используем фиксированную низкую хроматику
   const isNeutralColor = (base.c ?? 0) < 0.05;

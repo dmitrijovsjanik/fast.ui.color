@@ -176,17 +176,7 @@ export function FastUIDesign() {
         // S-образная интерполяция
         for (let i = 1; i < newKeyPoints.length - 1; i++) {
           const t = i / (newKeyPoints.length - 1);
-          
-          // Более выраженная S-образная функция
-          let sCurve;
-          if (t < 0.5) {
-            // Первая половина - медленное изменение
-            sCurve = 2 * Math.pow(t, 3);
-          } else {
-            // Вторая половина - быстрое изменение
-            sCurve = 1 - 2 * Math.pow(1 - t, 3);
-          }
-          
+          const sCurve = 3 * Math.pow(t, 2) - 2 * Math.pow(t, 3); // S-образная функция
           newKeyPoints[i] = {
             ...newKeyPoints[i],
             y: firstPoint.y - (firstPoint.y - lastPoint.y) * sCurve

@@ -160,22 +160,12 @@ export function generateLinearCurve(): CurveSettings {
 
 // Генерация S-образной кривой
 export function generateSCurve(): CurveSettings {
-  // Создаем более выраженную S-образную кривую
+  // Создаем S-образно распределенные точки от 0.98 до 0.1
   const keyPoints = [];
   for (let i = 0; i < 11; i++) {
     const t = i / 10; // от 0 до 1
-    
-    // Более выраженная S-образная функция
-    let sCurve;
-    if (t < 0.5) {
-      // Первая половина - медленное изменение
-      sCurve = 2 * Math.pow(t, 3);
-    } else {
-      // Вторая половина - быстрое изменение
-      sCurve = 1 - 2 * Math.pow(1 - t, 3);
-    }
-    
-    const y = 0.98 - (0.98 - 0.1) * sCurve;
+    const sCurve = 3 * Math.pow(t, 2) - 2 * Math.pow(t, 3); // S-образная функция
+    const y = 0.98 - (0.98 - 0.1) * sCurve; // S-образная интерполяция от 0.98 до 0.1
     keyPoints.push({
       id: `point-${i}`,
       y: y
@@ -220,6 +210,55 @@ export function generateCustomCurve(): CurveSettings {
       controlPoint2: { x: 0.66, y: 0.66 }
     }
   };
+}
+
+// Функция для тестирования линейности кривой
+export function testCurveLinearity(lightnessValues: number[]): void {
+  console.log('=== ТЕСТ ЛИНЕЙНОСТИ КРИВОЙ ===');
+  console.log('Значения яркости:', lightnessValues.map((v, i) => `${i+1}: ${(v * 100).toFixed(1)}%`));
+  
+  // Проверяем равномерность шагов
+  const differences: number[] = [];
+  for (let i = 1; i < lightnessValues.length; i++) {
+    const diff = lightnessValues[i-1] - lightnessValues[i];
+    differences.push(diff);
+  }
+  
+  console.log('Разности между соседними шагами:', differences.map((d, i) => `${i+1}-${i+2}: ${(d * 100).toFixed(1)}%`));
+  
+  // Проверяем отклонения от идеальной линейности
+  const totalRange = lightnessValues[0] - lightnessValues[lightnessValues.length - 1];
+  const expectedStep = totalRange / (lightnessValues.length - 1);
+  
+  console.log('Общий диапазон:', (totalRange * 100).toFixed(1) + '%');
+  console.log('Ожидаемый шаг:', (expectedStep * 100).toFixed(1) + '%');
+  
+  const deviations: number[] = [];
+  for (let i = 0; i < differences.length; i++) {
+    const deviation = Math.abs(differences[i] - expectedStep);
+    deviations.push(deviation);
+  }
+  
+  console.log('Отклонения от идеального шага:', deviations.map((d, i) => `${i+1}-${i+2}: ${(d * 100).toFixed(1)}%`));
+  
+  const maxDeviation = Math.max(...deviations);
+  const avgDeviation = deviations.reduce((a, b) => a + b, 0) / deviations.length;
+  
+  console.log('Максимальное отклонение:', (maxDeviation * 100).toFixed(1) + '%');
+  console.log('Среднее отклонение:', (avgDeviation * 100).toFixed(1) + '%');
+  
+  // Проверяем контраст между соседними цветами
+  const contrasts: number[] = [];
+  for (let i = 1; i < lightnessValues.length; i++) {
+    const l1 = lightnessValues[i-1];
+    const l2 = lightnessValues[i];
+    const contrast = Math.abs(l1 - l2) / Math.min(l1, l2);
+    contrasts.push(contrast);
+  }
+  
+  console.log('Контрасты между соседними цветами:', contrasts.map((c, i) => `${i+1}-${i+2}: ${(c * 100).toFixed(1)}%`));
+  
+  console.log('=== КОНЕЦ ТЕСТА ===');
 }
 
 
