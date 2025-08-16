@@ -12,7 +12,7 @@ function normalizeHue(h: number): number {
 
 
 
-// Linear алгоритм - генерирует абсолютно любой цвет в одном из шагов
+// Linear алгоритм - полностью переписанный алгоритм построения шагов 1-11
 export function generateCuloriPalette(
   baseHex: string,
   opts: {
@@ -45,36 +45,21 @@ export function generateCuloriPalette(
     ? new Array(LINEAR_STEPS.length).fill(0.005) // Фиксированная низкая хроматика для нейтральных цветов
     : generateDefaultChromaValues(base.c ?? 0.08);
 
-  // Улучшенный алгоритм: находим позицию базового цвета в кривой
-  // и создаем палитру, где базовый цвет точно соответствует своей позиции
-  let baseStepIndex = 5; // По умолчанию 500
-  let minDiff = Infinity;
-  
-  // Ищем ближайшее значение яркости из кривой к яркости базового цвета
-  lightnessValues.forEach((targetL, index) => {
-    const diff = Math.abs((base.l ?? 0.5) - targetL);
-    if (diff < minDiff) {
-      minDiff = diff;
-      baseStepIndex = index;
-    }
-  });
-
+  // НОВЫЙ АЛГОРИТМ: просто применяем кривую к базовому цвету
+  // Каждый шаг палитры получает яркость из соответствующей точки кривой
   const out: string[] = [];
 
   LINEAR_STEPS.forEach((_step: number, i: number) => {
-    // Если это позиция базового цвета, возвращаем его точно
-    if (i === baseStepIndex) {
-      out.push(baseHex);
-      return;
-    }
-
-    // Используем значения из кривых напрямую
+    // Берем яркость из кривой для этого шага
     const targetL = lightnessValues[i];
+    
+    // Берем хроматику из кривой или дефолтную
     const targetC = chromaValues[i];
     
-    // ВСЕГДА используем тот же оттенок что и базовый цвет
+    // Всегда используем оттенок базового цвета
     const h = baseHue;
 
+    // Генерируем цвет с новой яркостью и хроматикой
     out.push(formatHex({ mode: 'oklch', l: targetL, c: targetC, h }));
   });
 
@@ -86,8 +71,8 @@ function generateDefaultLightnessValues(): number[] {
   const values: number[] = [];
   for (let i = 0; i < LINEAR_STEPS.length; i++) {
     const t = i / (LINEAR_STEPS.length - 1);
-    // Более плавная кривая для лучшего соответствия с пользовательскими кривыми
-    values.push(0.98 - (0.98 - 0.08) * Math.pow(t, 1.8));
+    // Простая линейная интерполяция от 0.98 до 0.08
+    values.push(0.98 - (0.98 - 0.08) * t);
   }
   return values;
 }
@@ -97,10 +82,10 @@ function generateDefaultChromaValues(baseC: number): number[] {
   const values: number[] = [];
   for (let i = 0; i < LINEAR_STEPS.length; i++) {
     const t = i / (LINEAR_STEPS.length - 1);
-    // Более простая и предсказуемая кривая хроматики
-    const curve = Math.sin(t * Math.PI); // Синусоидальная кривая
-    const minChroma = Math.max(0.01, baseC * 0.1);
-    const maxChroma = Math.max(0.15, baseC * 1.5);
+    // Простая кривая хроматики: максимум в середине, минимум по краям
+    const curve = 4 * t * (1 - t); // Параболическая кривая
+    const minChroma = Math.max(0.01, baseC * 0.2);
+    const maxChroma = Math.max(0.12, baseC * 1.2);
     values.push(minChroma + (maxChroma - minChroma) * curve);
   }
   return values;
