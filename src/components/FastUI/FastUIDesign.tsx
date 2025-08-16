@@ -225,6 +225,7 @@ export function FastUIDesign() {
 
   // Обновление палитр при изменении цветов, масштаба или кривых
   useEffect(() => {
+    console.log('Обновляем палитры для цветов:', selectedColors);
     const updatedPalettes: Record<ColorPaletteType, string[]> = {
       brand: generatePaletteFromColor(selectedColors.brand, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
       accent: generatePaletteFromColor(selectedColors.accent, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
@@ -234,6 +235,7 @@ export function FastUIDesign() {
       warning: generatePaletteFromColor(selectedColors.warning, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve),
       neutral: generatePaletteFromColor(selectedColors.neutral, selectedScale === 'Linear' ? 11 : 12, selectedScale, lightnessCurve)
     };
+    console.log('Сгенерированные палитры:', updatedPalettes);
     setColorPalettes(updatedPalettes);
   }, [selectedColors, selectedScale, lightnessCurve]);
 
@@ -247,14 +249,7 @@ export function FastUIDesign() {
     generateAutoColors(selectedColors.brand);
   }, [selectedColors.brand]);
 
-  // Инициализация: помечаем бренд-цвет как измененный вручную, чтобы не показывать стрелочку сброса
-  useEffect(() => {
-    setManuallyChangedColors(prev => {
-      const newSet = new Set(prev);
-      newSet.add('brand');
-      return newSet;
-    });
-  }, []);
+
 
   return (
     <div className="fast-ui-design">
