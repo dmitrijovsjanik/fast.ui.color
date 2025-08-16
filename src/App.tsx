@@ -1,5 +1,5 @@
 import { ThemeProvider } from './themes/themeProvider';
-import { FastUIDesign } from './components/FastUIDesign';
+import { FastUIDesign } from './components/FastUI/FastUIDesign';
 
 function App() {
   return (

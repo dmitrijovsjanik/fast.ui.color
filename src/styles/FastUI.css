@@ -2,18 +2,13 @@
 
 .fast-ui-design {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.main-container {
-  padding: 80px 128px 128px 128px;
   background: #EFEFEF;
-  overflow: hidden;
+  min-height: 100vh;
+  padding: 80px 0 128px 0;
+  display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   align-items: center;
   gap: 24px;
-  display: inline-flex;
-  min-height: 100vh;
 }
 
 /* Header Styles */
@@ -55,22 +50,41 @@
   min-height: 20px;
   padding: 2px 8px;
   position: relative;
-  background: rgba(0, 0, 0, 0.06);
   overflow: hidden;
   border-radius: 6px;
   justify-content: center;
   align-items: center;
-  display: flex;
+  display: inline-flex;
 }
 
-.pro-badge-bg {
+.pro-badge-bg-2 {
+  width: 50px;
+  height: 50px;
+  left: -5px;
+  top: -13px;
   position: absolute;
-  left: 0;
-  top: -8px;
-  width: 40px;
-  height: 24px;
-  background: conic-gradient(from 90deg, rgba(0, 0, 0, 1) 0deg, rgba(255, 255, 255, 0.72) 16.875deg, rgba(0, 0, 0, 1) 88.125deg, rgba(255, 255, 255, 0.72) 151.875deg, rgba(0, 0, 0, 1) 225deg, rgba(255, 255, 255, 0.72) 288.75deg, rgba(0, 0, 0, 1) 360deg);
+  background: radial-gradient(ellipse 91.85% 92.48% at 10.11% 28.24%, #FBE46E 0%, #FFB342 35%, #FF42F7 63%, #FF4242 100%);
+  animation: rotate-bg 8s linear infinite;
+}
+
+.pro-badge-bg-1 {
+  width: 50px;
+  height: 50px;
+  left: -5px;
+  top: -13px;
+  position: absolute;
   mix-blend-mode: screen;
+  background: conic-gradient(from 0deg at 50% 50%, rgba(255, 255, 255, 0.72) 0deg, rgba(255, 255, 255, 0.72) 45deg, rgba(0, 0, 0, 0.8) 90deg, rgba(0, 0, 0, 0.8) 135deg, rgba(255, 255, 255, 0.72) 180deg, rgba(255, 255, 255, 0.72) 225deg, rgba(0, 0, 0, 0.8) 270deg, rgba(0, 0, 0, 0.8) 315deg, rgba(255, 255, 255, 0.72) 360deg);
+  animation: rotate-bg 8s linear infinite;
+}
+
+@keyframes rotate-bg {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .pro-badge-label {
@@ -121,8 +135,8 @@
   justify-content: flex-start;
   align-items: flex-start;
   display: flex;
-  width: 100%;
-  max-width: 1200px;
+  width: 708px;
+  height: auto;
 }
 
 .body-header {
@@ -186,6 +200,7 @@
   gap: 16px;
   display: flex;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Settings Styles */
@@ -197,6 +212,7 @@
 }
 
 .setting-group {
+  position: relative;
   justify-content: flex-start;
   align-items: center;
   gap: 4px;
@@ -225,6 +241,21 @@
   word-wrap: break-word;
 }
 
+.setting-dropdown {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.setting-dropdown:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
 .setting-icon {
   width: 12px;
   height: 12px;
@@ -234,6 +265,42 @@
   display: flex;
   font-size: 10px;
   color: rgba(0, 0, 0, 0.88);
+  transition: transform 0.2s ease;
+}
+
+.setting-icon.open {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 120px;
+  margin-top: 4px;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: rgba(5, 5, 5, 0.87);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dropdown-item.selected {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
+  font-weight: 500;
 }
 
 /* Color Schemes Styles */
@@ -259,10 +326,10 @@
   width: 44px;
   height: 44px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 12px;
-  outline: 1px rgba(0, 0, 0, 0.09) solid;
-  outline-offset: -1px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  box-sizing: border-box;
 }
 
 .color-picker-bg {
@@ -295,12 +362,16 @@
   background: #E5484D;
 }
 
-.lock-icon {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  font-size: 16px;
-  opacity: 0.4;
+
+
+.color-picker.editable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.color-picker.editable:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .color-palette {
@@ -310,14 +381,16 @@
   gap: 8px;
   display: flex;
   flex: 1;
+  min-width: 0;
 }
 
 .color-shade {
-  width: 44px;
+  flex: 1;
+  min-width: 0;
   height: 44px;
   border-radius: 12px;
-  outline: 1px rgba(0, 0, 0, 0.149) solid;
-  outline-offset: -1px;
+  border: 1px solid rgba(0, 0, 0, 0.149);
+  box-sizing: border-box;
   cursor: pointer;
   transition: transform 0.2s ease;
 }
@@ -326,35 +399,52 @@
   transform: scale(1.05);
 }
 
+/* Отметка базового цвета */
+.color-shade.base-color {
+  position: relative;
+}
+
+.base-color-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  z-index: 1;
+}
+
 .color-shade.placeholder {
   background: transparent;
-  outline: 1px rgba(0, 0, 0, 0.149) dashed;
+  border: 1px dashed rgba(0, 0, 0, 0.149);
 }
 
 .add-color-button {
   width: 44px;
   height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 8px;
   border-radius: 12px;
-  outline: 1px rgba(0, 0, 0, 0.15) solid;
-  outline-offset: -1px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
   justify-content: center;
   align-items: center;
   display: flex;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .add-color-button:hover {
   background: rgba(0, 0, 0, 0.05);
+  transform: scale(1.05);
 }
 
-.plus-icon {
-  font-size: 20px;
-  color: rgba(0, 0, 0, 0.6118);
+.add-color-button svg {
+  stroke-width: 2;
+  color: rgba(0, 0, 0, 0.6);
 }
+
+
 
 /* Footer Styles */
 .footer {
@@ -475,10 +565,73 @@
   background: #333;
 }
 
+/* Color Picker Styles */
+.color-picker-input-direct {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  background: none;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.reset-color-button {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.reset-color-button:hover {
+  background: rgba(0, 0, 0, 1);
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.reset-color-button svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+.color-picker-input-direct {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  background: none;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
-  .main-container {
+  .fast-ui-design {
     padding: 40px 20px 60px 20px;
+  }
+
+  .body {
+    width: 100%;
+    max-width: 708px;
   }
 
   .nav-item {
@@ -504,7 +657,5 @@
   .add-color-button {
     width: 32px;
     height: 32px;
-    min-width: 32px;
-    min-height: 32px;
   }
 }

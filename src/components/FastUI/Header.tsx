@@ -5,7 +5,8 @@ export function Header() {
         <div className="fast-ui-title">Fast UI</div>
         <div className="badges">
           <div className="pro-badge">
-            <div className="pro-badge-bg"></div>
+            <div className="pro-badge-bg-2"></div>
+            <div className="pro-badge-bg-1"></div>
             <div className="pro-badge-label">Pro</div>
           </div>
           <div className="beta-badge">

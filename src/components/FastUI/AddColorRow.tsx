@@ -1,15 +1,18 @@
+import { PlusIcon } from '@heroicons/react/24/outline';
+
 interface AddColorRowProps {
   onAddClick?: () => void;
+  placeholderCount?: number;
 }
 
-export function AddColorRow({ onAddClick }: AddColorRowProps) {
+export function AddColorRow({ onAddClick, placeholderCount = 12 }: AddColorRowProps) {
   return (
     <div className="color-row add-row">
       <div className="add-color-button" onClick={onAddClick}>
-        <div className="plus-icon">+</div>
+        <PlusIcon width={20} height={20} />
       </div>
       <div className="color-palette placeholders">
-        {Array.from({ length: 12 }, (_, i) => (
+        {Array.from({ length: placeholderCount }, (_, i) => (
           <div key={i} className="color-shade placeholder" />
         ))}
       </div>
