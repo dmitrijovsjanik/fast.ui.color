@@ -35,13 +35,7 @@ export function interpolateKeyPoints(keyPoints: KeyPoint[], steps: number): numb
   if (keyPoints.length === 0) return new Array(steps).fill(0.5);
   if (keyPoints.length === 1) return new Array(steps).fill(keyPoints[0].y);
   
-  // Каждая ключевая точка соответствует конкретному шагу
-  // Если у нас 11 ключевых точек и 11 шагов, возвращаем значения напрямую
-  if (keyPoints.length === steps) {
-    return keyPoints.map(point => point.y);
-  }
-  
-  // Если количество точек не совпадает, интерполируем
+  // Всегда выполняем интерполяцию для обеспечения линейности
   const values: number[] = [];
   
   for (let i = 0; i < steps; i++) {
@@ -138,7 +132,8 @@ export function generateLinearCurve(): CurveSettings {
   const keyPoints = [];
   for (let i = 0; i < 11; i++) {
     const t = i / 10; // от 0 до 1
-    const y = 0.98 - (0.98 - 0.1) * t; // линейная интерполяция от 0.98 до 0.1
+    // Идеально линейная интерполяция от 0.98 до 0.1
+    const y = 0.98 - (0.98 - 0.1) * t;
     keyPoints.push({
       id: `point-${i}`,
       y: y
