@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import type { Palette, OklchPalette, AlphaPalette, SemanticRole, StepIndex } from '@color-tool/core';
 import { SEMANTIC_ROLES, STEP_INDICES, checkAPCAContrast } from '@color-tool/core';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-
-type DisplayMode = 'semantic' | 'fill';
-type ColorMode = 'solid' | 'alpha';
 
 interface PaletteMatrixProps {
   palette: Palette;
@@ -12,6 +8,7 @@ interface PaletteMatrixProps {
   alphaPalette?: AlphaPalette;
   onCopy: (text: string) => void;
   secondaryActive?: boolean;
+  displayMode: 'semantic' | 'fill';
 }
 
 const ROLE_LABELS: Record<SemanticRole, string> = {
@@ -39,10 +36,8 @@ function getAaColor(step: StepIndex, scale: Record<StepIndex, string>): string |
   return null;
 }
 
-export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, secondaryActive }: PaletteMatrixProps) {
+export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, secondaryActive, displayMode }: PaletteMatrixProps) {
   const [hoveredCell, setHoveredCell] = useState<string | null>(null);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('semantic');
-  const [colorMode, setColorMode] = useState<ColorMode>('solid');
 
   const displayRoles = secondaryActive
     ? SEMANTIC_ROLES
@@ -50,32 +45,6 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
 
   return (
     <div className="rounded-xl bg-card p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold">Palette Matrix</h2>
-        <div className="flex items-center gap-3">
-          <ToggleGroup
-            type="single"
-            size="sm"
-            value={displayMode}
-            onValueChange={(v) => v && setDisplayMode(v as DisplayMode)}
-          >
-            <ToggleGroupItem value="semantic">Semantic</ToggleGroupItem>
-            <ToggleGroupItem value="fill">Fill</ToggleGroupItem>
-          </ToggleGroup>
-          {alphaPalette && (
-            <ToggleGroup
-              type="single"
-              size="sm"
-              value={colorMode}
-              onValueChange={(v) => v && setColorMode(v as ColorMode)}
-            >
-              <ToggleGroupItem value="solid">Solid</ToggleGroupItem>
-              <ToggleGroupItem value="alpha">Alpha</ToggleGroupItem>
-            </ToggleGroup>
-          )}
-        </div>
-      </div>
-
       {/* Step numbers header */}
       <div className="flex items-center mb-2">
         <div className="w-20 shrink-0" />
@@ -95,7 +64,7 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
 
       {/* Color rows */}
       {displayRoles.map(role => (
-        <div key={role} className={`flex items-center mb-1.5 ${role === 'success' && secondaryActive ? 'mt-3' : ''}`}>
+        <div key={role} className="flex items-center mb-1.5">
           <div className="w-20 shrink-0 flex items-center gap-2">
             <div
               className="w-2.5 h-2.5 rounded-full"
@@ -107,12 +76,8 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
           <div className="flex-1 grid grid-cols-12 gap-1">
             {STEP_INDICES.map(step => {
               const hex = palette[role][step];
-              const alpha = alphaPalette?.[role][step];
-              const isAlpha = colorMode === 'alpha' && alpha;
-              // For display, always use the solid hex — it's visually identical
-              // to the alpha composited over the background, avoiding subpixel artifacts
               const color = hex;
-              const copyValue = isAlpha ? alpha.css : hex;
+              const copyValue = hex;
               const oklch = oklchPalette[role][step];
               const cellId = `${role}-${step}`;
               const isHovered = hoveredCell === cellId;
@@ -137,7 +102,7 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
                   onMouseEnter={() => setHoveredCell(cellId)}
                   onMouseLeave={() => setHoveredCell(null)}
                   onClick={() => onCopy(copyValue)}
-                  title={`${role}-${step}: ${hex}\nL: ${oklch.l.toFixed(3)} C: ${oklch.c.toFixed(3)} H: ${oklch.h.toFixed(1)}${alpha ? `\nAlpha: ${alpha.css}` : ''}`}
+                  title={`${role}-${step}: ${hex}\nL: ${oklch.l.toFixed(3)} C: ${oklch.c.toFixed(3)} H: ${oklch.h.toFixed(1)}`}
                 >
                   {aaColor && (
                     <span

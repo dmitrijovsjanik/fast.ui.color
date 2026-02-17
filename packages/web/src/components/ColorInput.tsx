@@ -89,13 +89,13 @@ export function ColorInput({ label, color, onChange, defaultColor }: ColorInputP
   }, [onChange]);
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <div className="flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
             <button
-              className="w-9 h-9 rounded-md border border-input shrink-0 cursor-pointer transition-shadow hover:ring-2 hover:ring-ring/30"
+              className="w-8 h-8 rounded-md border border-input shrink-0 cursor-pointer transition-shadow hover:ring-2 hover:ring-ring/30"
               style={{ backgroundColor: color }}
               aria-label={`Pick ${label} color`}
             />

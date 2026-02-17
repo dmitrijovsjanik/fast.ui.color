@@ -29,6 +29,7 @@ export function App() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [namingConfig, setNamingConfig] = useState<NamingConfig>(DEFAULT_NAMING_CONFIG);
+  const [displayMode, setDisplayMode] = useState<'semantic' | 'fill'>('semantic');
 
   // Sync dark class on <html>
   useEffect(() => {
@@ -56,7 +57,7 @@ export function App() {
     const b = result.palette.brand;
 
     // Map palette steps to shadcn tokens
-    s.setProperty('--background', n[2]);
+    s.setProperty('--background', config.theme === 'dark' ? '#000000' : n[2]);
     s.setProperty('--foreground', n[12]);
     s.setProperty('--card', config.backgroundColor || (config.theme === 'dark' ? n[3] : '#ffffff'));
     s.setProperty('--card-foreground', n[12]);
@@ -137,7 +138,7 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header theme={config.theme} onThemeToggle={handleThemeToggle} />
+      <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <BrandInput
           color={config.brandColor}
@@ -151,6 +152,10 @@ export function App() {
           onSecondaryConfigChange={handleSecondaryConfigChange}
           config={config}
           onConfigChange={handleConfigChange}
+          displayMode={displayMode}
+          onDisplayModeChange={setDisplayMode}
+          theme={config.theme}
+          onThemeToggle={handleThemeToggle}
         />
         {result && (
           <>
@@ -160,6 +165,7 @@ export function App() {
               alphaPalette={result.alphaPalette}
               onCopy={handleCopy}
               secondaryActive={config.secondary?.mode !== 'off'}
+              displayMode={displayMode}
             />
             <SettingsSidebar
               result={result}
