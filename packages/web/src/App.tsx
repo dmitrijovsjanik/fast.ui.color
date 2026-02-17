@@ -149,6 +149,8 @@ export function App() {
           secondaryColor={result?.palette.secondary[9]}
           onSecondaryColorChange={handleSecondaryColorChange}
           onSecondaryConfigChange={handleSecondaryConfigChange}
+          config={config}
+          onConfigChange={handleConfigChange}
         />
         {result && (
           <>
@@ -160,9 +162,7 @@ export function App() {
               secondaryActive={config.secondary?.mode !== 'off'}
             />
             <SettingsSidebar
-              config={config}
               result={result}
-              onConfigChange={handleConfigChange}
               onCopy={handleCopy}
               namingConfig={namingConfig}
               onNamingConfigChange={setNamingConfig}

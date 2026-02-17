@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import type { NamingConfig, TemplateVariable, SemanticRole } from '@color-tool/core';
 import { TEMPLATE_VARIABLES, SEMANTIC_ROLES, DEFAULT_NAMING_CONFIG, resolveTokenName } from '@color-tool/core';
 import { Label } from '@/components/ui/label';
-import { GripVertical, X, Plus, RotateCcw } from 'lucide-react';
+import { GripVertical, X, Plus, RotateCcw, Info } from 'lucide-react';
 
 interface NamingTemplateBuilderProps {
   config: NamingConfig;
@@ -212,13 +212,12 @@ export function NamingTemplateBuilder({ config, onChange }: NamingTemplateBuilde
             <span className="w-12 text-muted-foreground shrink-0">theme</span>
             <div className="flex items-center gap-1 flex-wrap">
               {(['light', 'dark'] as const).map(theme => (
-                <div key={theme} className="flex items-center gap-1">
-                  <span className="text-muted-foreground/60">{theme}:</span>
-                  <InlineInput
-                    value={config.themeNames[theme]}
-                    onChange={(v) => updateThemeName(theme, v)}
-                  />
-                </div>
+                <InlineInput
+                  key={theme}
+                  value={config.themeNames[theme]}
+                  defaultValue={DEFAULT_NAMING_CONFIG.themeNames[theme]}
+                  onChange={(v) => updateThemeName(theme, v)}
+                />
               ))}
             </div>
           </div>
@@ -228,13 +227,12 @@ export function NamingTemplateBuilder({ config, onChange }: NamingTemplateBuilde
             <span className="w-12 text-muted-foreground shrink-0 pt-1">role</span>
             <div className="flex items-center gap-1 flex-wrap">
               {SEMANTIC_ROLES.map(role => (
-                <div key={role} className="flex items-center gap-1">
-                  <span className="text-muted-foreground/60">{role}:</span>
-                  <InlineInput
-                    value={config.roleNames[role]}
-                    onChange={(v) => updateRoleName(role, v)}
-                  />
-                </div>
+                <InlineInput
+                  key={role}
+                  value={config.roleNames[role]}
+                  defaultValue={DEFAULT_NAMING_CONFIG.roleNames[role]}
+                  onChange={(v) => updateRoleName(role, v)}
+                />
               ))}
             </div>
           </div>
@@ -244,13 +242,12 @@ export function NamingTemplateBuilder({ config, onChange }: NamingTemplateBuilde
             <span className="w-12 text-muted-foreground shrink-0">mode</span>
             <div className="flex items-center gap-1 flex-wrap">
               {(['solid', 'alpha'] as const).map(mode => (
-                <div key={mode} className="flex items-center gap-1">
-                  <span className="text-muted-foreground/60">{mode}:</span>
-                  <InlineInput
-                    value={config.modeNames[mode]}
-                    onChange={(v) => updateModeName(mode, v)}
-                  />
-                </div>
+                <InlineInput
+                  key={mode}
+                  value={config.modeNames[mode]}
+                  defaultValue={DEFAULT_NAMING_CONFIG.modeNames[mode]}
+                  onChange={(v) => updateModeName(mode, v)}
+                />
               ))}
             </div>
           </div>
@@ -260,13 +257,53 @@ export function NamingTemplateBuilder({ config, onChange }: NamingTemplateBuilde
   );
 }
 
-function InlineInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function InlineInput({ value, defaultValue, onChange }: { value: string; defaultValue: string; onChange: (v: string) => void }) {
+  const isCustom = value !== defaultValue;
+  const [showHint, setShowHint] = useState(false);
+
+  const handleChange = (input: string) => {
+    if (input === '') {
+      // Empty → revert to default
+      onChange(defaultValue);
+    } else {
+      onChange(input);
+    }
+  };
+
+  // Measure width: use the displayed text (value or placeholder) + padding
+  const displayText = isCustom ? value : '';
+  const charWidth = 7.2; // approx monospace char width at text-xs
+  const padding = 12; // px-1.5 * 2
+  const infoSpace = isCustom ? 18 : 0;
+  const computedWidth = Math.max(48, (displayText || defaultValue).length * charWidth + padding + infoSpace);
+
   return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-6 px-1.5 rounded text-xs font-mono bg-muted border-none outline-none focus:ring-1 focus:ring-ring w-16"
-    />
+    <div className="relative inline-flex items-center">
+      <input
+        type="text"
+        value={isCustom ? value : ''}
+        placeholder={defaultValue}
+        onChange={(e) => handleChange(e.target.value)}
+        className="h-6 px-1.5 rounded text-xs font-mono bg-muted border-none outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
+        style={{ width: `${computedWidth}px`, minWidth: '48px' }}
+      />
+      {isCustom && (
+        <button
+          type="button"
+          className="absolute right-0.5 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
+          onMouseEnter={() => setShowHint(true)}
+          onMouseLeave={() => setShowHint(false)}
+          onClick={() => onChange(defaultValue)}
+          title={`Default: ${defaultValue}`}
+        >
+          <Info className="h-3 w-3" />
+        </button>
+      )}
+      {showHint && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-mono whitespace-nowrap px-1.5 py-0.5 rounded bg-foreground text-background z-20">
+          {defaultValue}
+        </div>
+      )}
+    </div>
   );
 }

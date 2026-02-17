@@ -1,22 +1,18 @@
-import type { GenerationConfig, GenerationResult, NeutralStyle, BrandMode, ChromaEqualization, LightnessMapping, NamingConfig } from '@color-tool/core';
+import type { GenerationResult, NamingConfig } from '@color-tool/core';
 import { exportCSS, exportHexTable, exportSVG, exportDTCG } from '@color-tool/core';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Copy, Download, Image, Braces } from 'lucide-react';
 import { NamingTemplateBuilder } from './NamingTemplateBuilder';
 
 interface SettingsSidebarProps {
-  config: GenerationConfig;
   result: GenerationResult;
-  onConfigChange: (partial: Partial<GenerationConfig>) => void;
   onCopy: (text: string) => void;
   namingConfig: NamingConfig;
   onNamingConfigChange: (config: NamingConfig) => void;
   onGenerateBothThemes: () => { lightResult: GenerationResult; darkResult: GenerationResult };
 }
 
-export function SettingsSidebar({ config, result, onConfigChange, onCopy, namingConfig, onNamingConfigChange, onGenerateBothThemes }: SettingsSidebarProps) {
+export function SettingsSidebar({ result, onCopy, namingConfig, onNamingConfigChange, onGenerateBothThemes }: SettingsSidebarProps) {
   const handleExportCSS = () => {
     const css = exportCSS(result.palette, { naming: namingConfig }, result.alphaPalette);
     onCopy(css);
@@ -55,74 +51,6 @@ export function SettingsSidebar({ config, result, onConfigChange, onCopy, naming
 
   return (
     <div className="rounded-xl bg-card p-6 mb-6">
-      {/* Settings — inline row */}
-      <div className="flex flex-wrap items-end gap-6 mb-6">
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Neutral Style</Label>
-          <ToggleGroup
-            type="single"
-            size="sm"
-            value={config.neutralStyle}
-            onValueChange={(v) => v && onConfigChange({ neutralStyle: v as NeutralStyle })}
-          >
-            <ToggleGroupItem value="tinted">Tinted</ToggleGroupItem>
-            <ToggleGroupItem value="pure-gray">Pure Gray</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Brand Step 9</Label>
-          <ToggleGroup
-            type="single"
-            size="sm"
-            value={config.brandMode}
-            onValueChange={(v) => v && onConfigChange({ brandMode: v as BrandMode })}
-          >
-            <ToggleGroupItem value="auto">Auto</ToggleGroupItem>
-            <ToggleGroupItem value="fixed">Fixed</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Chroma</Label>
-          <ToggleGroup
-            type="single"
-            size="sm"
-            value={config.chromaEqualization}
-            onValueChange={(v) => v && onConfigChange({ chromaEqualization: v as ChromaEqualization })}
-          >
-            <ToggleGroupItem value="independent">Independent</ToggleGroupItem>
-            <ToggleGroupItem value="equal">Equal</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Gamut</Label>
-          <ToggleGroup
-            type="single"
-            size="sm"
-            value={config.gamut}
-            onValueChange={(v) => v && onConfigChange({ gamut: v as 'sRGB' | 'P3' })}
-          >
-            <ToggleGroupItem value="sRGB">sRGB</ToggleGroupItem>
-            <ToggleGroupItem value="P3">P3</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Lightness</Label>
-          <ToggleGroup
-            type="single"
-            size="sm"
-            value={config.lightnessMapping}
-            onValueChange={(v) => v && onConfigChange({ lightnessMapping: v as LightnessMapping })}
-          >
-            <ToggleGroupItem value="fixed">Fixed</ToggleGroupItem>
-            <ToggleGroupItem value="interpolated">Adaptive</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-      </div>
-
       {/* Naming Template Builder */}
       <div className="mb-6">
         <NamingTemplateBuilder config={namingConfig} onChange={onNamingConfigChange} />

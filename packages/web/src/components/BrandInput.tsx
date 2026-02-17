@@ -1,4 +1,4 @@
-import type { SecondaryConfig, SecondaryMode, HarmonyType, HarmonyVariation } from '@color-tool/core';
+import type { GenerationConfig, SecondaryConfig, SecondaryMode, HarmonyType, HarmonyVariation, NeutralStyle, BrandMode, ChromaEqualization, LightnessMapping } from '@color-tool/core';
 import { getHarmonyVariations, getHarmonyLabel } from '@color-tool/core';
 import { ColorInput } from './ColorInput';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,8 @@ interface BrandInputProps {
   secondaryColor?: string;
   onSecondaryColorChange?: (color: string) => void;
   onSecondaryConfigChange?: (partial: Partial<SecondaryConfig>) => void;
+  config?: GenerationConfig;
+  onConfigChange?: (partial: Partial<GenerationConfig>) => void;
 }
 
 const HARMONY_LABELS: Record<HarmonyType, string> = {
@@ -34,6 +36,8 @@ export function BrandInput({
   secondaryColor,
   onSecondaryColorChange,
   onSecondaryConfigChange,
+  config,
+  onConfigChange,
 }: BrandInputProps) {
   const isSecondaryActive = secondaryConfig && secondaryConfig.mode !== 'off';
   const variations = secondaryConfig ? getHarmonyVariations(secondaryConfig.harmonyType) : [];
@@ -41,7 +45,8 @@ export function BrandInput({
 
   return (
     <div className="rounded-xl bg-card p-6 mb-6">
-      <div className="flex items-end gap-6">
+      {/* Color inputs + secondary brand */}
+      <div className="flex flex-wrap items-end gap-6">
         <ColorInput label="Brand Color" color={color} onChange={onChange} />
         {backgroundColor !== undefined && onBackgroundChange && (
           <ColorInput
@@ -51,11 +56,9 @@ export function BrandInput({
             defaultColor={defaultBackgroundColor}
           />
         )}
-      </div>
 
-      {secondaryConfig && onSecondaryConfigChange && (
-        <div className="mt-5 pt-5 border-t border-border">
-          <div className="flex flex-wrap items-end gap-6">
+        {secondaryConfig && onSecondaryConfigChange && (
+          <>
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Secondary Brand</Label>
               <ToggleGroup
@@ -103,6 +106,17 @@ export function BrandInput({
                     </ToggleGroup>
                   </div>
                 )}
+
+                {secondaryColor && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Preview</Label>
+                    <div
+                      className="w-9 h-9 rounded-md border border-border"
+                      style={{ backgroundColor: secondaryColor }}
+                      title={secondaryColor}
+                    />
+                  </div>
+                )}
               </>
             )}
 
@@ -113,17 +127,78 @@ export function BrandInput({
                 onChange={onSecondaryColorChange}
               />
             )}
+          </>
+        )}
+      </div>
 
-            {isSecondaryActive && secondaryColor && (
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Preview</Label>
-                <div
-                  className="w-9 h-9 rounded-md border border-border"
-                  style={{ backgroundColor: secondaryColor }}
-                  title={secondaryColor}
-                />
-              </div>
-            )}
+      {/* Generation settings */}
+      {config && onConfigChange && (
+        <div className="mt-5 pt-5 border-t border-border">
+          <div className="flex flex-wrap items-end gap-6">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Neutral Style</Label>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={config.neutralStyle}
+                onValueChange={(v) => v && onConfigChange({ neutralStyle: v as NeutralStyle })}
+              >
+                <ToggleGroupItem value="tinted">Tinted</ToggleGroupItem>
+                <ToggleGroupItem value="pure-gray">Pure Gray</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Brand Step 9</Label>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={config.brandMode}
+                onValueChange={(v) => v && onConfigChange({ brandMode: v as BrandMode })}
+              >
+                <ToggleGroupItem value="auto">Auto</ToggleGroupItem>
+                <ToggleGroupItem value="fixed">Fixed</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Chroma</Label>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={config.chromaEqualization}
+                onValueChange={(v) => v && onConfigChange({ chromaEqualization: v as ChromaEqualization })}
+              >
+                <ToggleGroupItem value="independent">Independent</ToggleGroupItem>
+                <ToggleGroupItem value="equal">Equal</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Gamut</Label>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={config.gamut}
+                onValueChange={(v) => v && onConfigChange({ gamut: v as 'sRGB' | 'P3' })}
+              >
+                <ToggleGroupItem value="sRGB">sRGB</ToggleGroupItem>
+                <ToggleGroupItem value="P3">P3</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Lightness</Label>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={config.lightnessMapping}
+                onValueChange={(v) => v && onConfigChange({ lightnessMapping: v as LightnessMapping })}
+              >
+                <ToggleGroupItem value="fixed">Fixed</ToggleGroupItem>
+                <ToggleGroupItem value="interpolated">Adaptive</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
         </div>
       )}

@@ -104,7 +104,7 @@ export function ColorInput({ label, color, onChange, defaultColor }: ColorInputP
             <HexColorPicker color={color} onChange={handlePickerChange} />
           </PopoverContent>
         </Popover>
-        <div className="relative w-[200px]">
+        <div className="relative w-[140px]">
           <Input
             value={inputValue}
             onChange={e => handleTextChange(e.target.value)}
