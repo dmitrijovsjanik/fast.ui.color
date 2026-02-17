@@ -9,6 +9,10 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
+
+# Turborepo
+.turbo/
 
 # Environment variables
 .env
