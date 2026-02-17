@@ -262,19 +262,19 @@ export const DARK_THEME_LIGHTNESS_OFFSETS: Record<StepIndex, number> = {
   12: 0.930,  // High-contrast text (absolute)
 };
 
-// Dark mode chroma — derived from Radix Blue Dark data.
-// Higher saturation in surface steps than previously, matching Radix's vibrant dark surfaces.
+// Dark mode chroma — reduced for surfaces (steps 1-5) to avoid eye strain,
+// and Helmholtz-Kohlrausch compensation on steps 9-10 (-15%).
 const DARK_CHROMA_FACTORS: Record<StepIndex, number> = {
-  1: 0.13,
-  2: 0.16,
-  3: 0.34,
-  4: 0.50,
-  5: 0.55,
-  6: 0.59,
-  7: 0.63,
-  8: 0.73,
-  9: 1.00,
-  10: 0.88,
+  1: 0.02,
+  2: 0.04,
+  3: 0.10,
+  4: 0.18,
+  5: 0.25,
+  6: 0.35,
+  7: 0.50,
+  8: 0.70,
+  9: 0.85,
+  10: 0.80,
   11: 0.65,
   12: 0.26,
 };
@@ -341,14 +341,25 @@ export function generateDarkThemeScale(options: ScaleGeneratorOptions): {
       c = isNeutral ? neutralChromaForStep(step, peakChroma) : darkChromaForStep(step, peakChroma);
     } else {
       // Steps 1-8
+      const fixedL = bgL + DARK_THEME_LIGHTNESS_OFFSETS[step as StepIndex];
       if (lightnessMapping === 'interpolated') {
-        // Interpolate between bgL and step9L using normalized positions
+        // Full interpolation between bgL and step9L
         l = bgL + DARK_STEP_POSITIONS[step] * (step9L - bgL);
       } else {
-        // Fixed: offset from background lightness
-        l = bgL + DARK_THEME_LIGHTNESS_OFFSETS[step as StepIndex];
+        l = fixedL;
       }
-      c = isNeutral ? neutralChromaForStep(step, peakChroma) : darkChromaForStep(step, peakChroma);
+      if (isNeutral) {
+        c = neutralChromaForStep(step, peakChroma);
+      } else {
+        const baseC = darkChromaForStep(step, peakChroma);
+        if (lightnessMapping === 'interpolated' && l > fixedL) {
+          // Adaptive: chroma scales up as lightness approaches step9.
+          const liftRatio = (l - fixedL) / (step9L - fixedL);
+          c = baseC + (step9C - baseC) * liftRatio;
+        } else {
+          c = baseC;
+        }
+      }
     }
 
     const mapped = gamutMapOklch({ l, c, h: hue }, gamut);
