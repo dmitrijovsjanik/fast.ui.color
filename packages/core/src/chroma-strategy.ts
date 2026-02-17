@@ -22,9 +22,11 @@ export function resolveChromaStrategy(
   config: GenerationConfig,
   brandOklch: OklchColor,
   hues: SemanticHues,
-  gamut: 'sRGB' | 'P3'
+  gamut: 'sRGB' | 'P3',
+  secondaryOklch?: OklchColor,
 ): Record<SemanticRole, number> {
   const { brandMode, chromaEqualization, neutralStyle } = config;
+  const isSecondaryCustom = config.secondary?.mode === 'custom' && secondaryOklch;
 
   const neutralChroma = neutralStyle === 'tinted' ? 0.011 : 0;
 
@@ -37,6 +39,9 @@ export function resolveChromaStrategy(
   // Per-role step 9 L (hue-aware + brand-blended)
   const roleLightness: Record<Exclude<SemanticRole, 'neutral'>, number> = {
     brand: brandStep9L,
+    secondary: isSecondaryCustom
+      ? secondaryOklch.l
+      : estimateSemanticStep9L(hues.secondary, brandStep9L, gamut),
     success: estimateSemanticStep9L(hues.success, brandStep9L, gamut),
     warning: estimateSemanticStep9L(hues.warning, brandStep9L, gamut),
     danger: estimateSemanticStep9L(hues.danger, brandStep9L, gamut),
@@ -46,6 +51,9 @@ export function resolveChromaStrategy(
   // Compute max chroma for each role at its lightness
   const maxChromas: Record<Exclude<SemanticRole, 'neutral'>, number> = {
     brand: brandMode === 'fixed' ? brandOklch.c : maxChromaForLH(brandStep9L, hues.brand, gamut),
+    secondary: isSecondaryCustom
+      ? secondaryOklch.c
+      : maxChromaForLH(roleLightness.secondary, hues.secondary, gamut),
     success: maxChromaForLH(roleLightness.success, hues.success, gamut),
     warning: maxChromaForLH(roleLightness.warning, hues.warning, gamut),
     danger: maxChromaForLH(roleLightness.danger, hues.danger, gamut),
@@ -58,6 +66,7 @@ export function resolveChromaStrategy(
     const minChroma = Math.min(...allValues);
     return {
       brand: minChroma,
+      secondary: minChroma,
       success: minChroma,
       warning: minChroma,
       danger: minChroma,
@@ -69,6 +78,7 @@ export function resolveChromaStrategy(
   // Independent — each role gets its own max chroma
   return {
     brand: maxChromas.brand,
+    secondary: maxChromas.secondary,
     success: maxChromas.success,
     warning: maxChromas.warning,
     danger: maxChromas.danger,

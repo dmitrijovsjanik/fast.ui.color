@@ -4,11 +4,13 @@ import type {
   Palette,
   OklchPalette,
   AlphaPalette,
+  OklchColor,
 } from './types';
 import { SEMANTIC_ROLES } from './types';
 import { hexToOklch } from './gamut-mapper';
 import { resolveSemanticHues } from './semantic-resolver';
 import { resolveChromaStrategy } from './chroma-strategy';
+import { resolveSecondaryHue } from './color-harmony';
 import { generateLightThemeScale, generateDarkThemeScale } from './scale-generator';
 import { auditPalette } from './contrast-checker';
 import { computeAlphaScale } from './alpha-colors';
@@ -17,11 +19,25 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
   // 1. Parse brand color
   const brandOklch = hexToOklch(config.brandColor);
 
-  // 2. Resolve semantic hues
-  const hues = resolveSemanticHues(brandOklch.h, config.neutralStyle);
+  // 1b. Resolve secondary brand hue
+  let secondaryOklch: OklchColor | undefined;
+  let secondaryHue: number;
+  const sec = config.secondary;
+
+  if (sec && sec.mode === 'custom' && sec.customColor) {
+    secondaryOklch = hexToOklch(sec.customColor);
+    secondaryHue = secondaryOklch.h;
+  } else if (sec && sec.mode === 'auto') {
+    secondaryHue = resolveSecondaryHue(brandOklch.h, sec);
+  } else {
+    secondaryHue = brandOklch.h;
+  }
+
+  // 2. Resolve semantic hues (with secondary for conflict avoidance)
+  const hues = resolveSemanticHues(brandOklch.h, config.neutralStyle, secondaryHue);
 
   // 3. Resolve chroma strategy
-  const chromas = resolveChromaStrategy(config, brandOklch, hues, config.gamut);
+  const chromas = resolveChromaStrategy(config, brandOklch, hues, config.gamut, secondaryOklch);
 
   // 4. Select scale generator based on theme
   const isDark = config.theme === 'dark';
@@ -50,16 +66,32 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
   });
   const brandStep9L = brandScale.oklchScale[9].l;
 
-  for (const role of SEMANTIC_ROLES) {
-    const isBrand = role === 'brand';
-    const isNeutral = role === 'neutral';
+  // Generate secondary scale
+  const isSecondaryCustomFixed = sec?.mode === 'custom' && secondaryOklch;
+  const secondaryScale = generateScale({
+    hue: hues.secondary,
+    peakChroma: chromas.secondary,
+    gamut: config.gamut,
+    fixedStep9: isSecondaryCustomFixed ? secondaryOklch : undefined,
+    isNeutral: false,
+    brandLightness: brandStep9L,
+    backgroundLightness: bgL,
+    lightnessMapping: config.lightnessMapping,
+  });
 
-    if (isBrand) {
+  for (const role of SEMANTIC_ROLES) {
+    if (role === 'brand') {
       palette[role] = brandScale.hexScale;
       oklchPalette[role] = brandScale.oklchScale;
       continue;
     }
+    if (role === 'secondary') {
+      palette[role] = secondaryScale.hexScale;
+      oklchPalette[role] = secondaryScale.oklchScale;
+      continue;
+    }
 
+    const isNeutral = role === 'neutral';
     const { oklchScale, hexScale } = generateScale({
       hue: hues[role],
       peakChroma: chromas[role],
@@ -104,4 +136,5 @@ export * from './scale-generator';
 export * from './chroma-strategy';
 export * from './contrast-checker';
 export * from './alpha-colors';
+export * from './color-harmony';
 export * from './export';

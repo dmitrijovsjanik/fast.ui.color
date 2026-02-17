@@ -21,7 +21,7 @@ const PADDING = 16;
 const CELL_W = SWATCH_W + GAP;
 const CELL_H = SWATCH_H + LABEL_H + GAP;
 const GRID_W = ROLE_LABEL_W + 12 * CELL_W;
-const GRID_H = SECTION_TITLE_H + STEP_HEADER_H + 6 * CELL_H;
+const GRID_H = SECTION_TITLE_H + STEP_HEADER_H + SEMANTIC_ROLES.length * CELL_H;
 
 function escapeXml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -59,7 +59,7 @@ function renderSection(lines: string[], section: SectionDef, naming: NamingConfi
 
   // Background rect for alpha section (so alpha composites visually correctly)
   if (isAlpha) {
-    lines.push(`<rect x="${ROLE_LABEL_W}" y="${rowsY}" width="${12 * CELL_W}" height="${6 * CELL_H}" fill="${bgColor}" rx="4" />`);
+    lines.push(`<rect x="${ROLE_LABEL_W}" y="${rowsY}" width="${12 * CELL_W}" height="${SEMANTIC_ROLES.length * CELL_H}" fill="${bgColor}" rx="4" />`);
   }
 
   // Rows

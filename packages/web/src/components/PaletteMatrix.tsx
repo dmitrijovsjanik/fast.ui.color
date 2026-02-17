@@ -11,10 +11,12 @@ interface PaletteMatrixProps {
   oklchPalette: OklchPalette;
   alphaPalette?: AlphaPalette;
   onCopy: (text: string) => void;
+  secondaryActive?: boolean;
 }
 
 const ROLE_LABELS: Record<SemanticRole, string> = {
   brand: 'Brand',
+  secondary: 'Secondary',
   success: 'Success',
   warning: 'Warning',
   danger: 'Danger',
@@ -37,10 +39,14 @@ function getAaColor(step: StepIndex, scale: Record<StepIndex, string>): string |
   return null;
 }
 
-export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy }: PaletteMatrixProps) {
+export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, secondaryActive }: PaletteMatrixProps) {
   const [hoveredCell, setHoveredCell] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('semantic');
   const [colorMode, setColorMode] = useState<ColorMode>('solid');
+
+  const displayRoles = secondaryActive
+    ? SEMANTIC_ROLES
+    : SEMANTIC_ROLES.filter(r => r !== 'secondary');
 
   return (
     <div className="rounded-xl bg-card p-6 mb-6">
@@ -88,8 +94,8 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy }: P
       </div>
 
       {/* Color rows */}
-      {SEMANTIC_ROLES.map(role => (
-        <div key={role} className="flex items-center mb-1.5">
+      {displayRoles.map(role => (
+        <div key={role} className={`flex items-center mb-1.5 ${role === 'success' && secondaryActive ? 'mt-3' : ''}`}>
           <div className="w-20 shrink-0 flex items-center gap-2">
             <div
               className="w-2.5 h-2.5 rounded-full"

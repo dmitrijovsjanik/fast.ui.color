@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { generatePalette, checkAPCAContrast, DEFAULT_NAMING_CONFIG, type GenerationConfig, type GenerationResult, type NamingConfig } from '@color-tool/core';
+import { generatePalette, checkAPCAContrast, DEFAULT_NAMING_CONFIG, type GenerationConfig, type GenerationResult, type NamingConfig, type SecondaryConfig } from '@color-tool/core';
 import { Header } from './components/Header';
 import { BrandInput } from './components/BrandInput';
 import { PaletteMatrix } from './components/PaletteMatrix';
@@ -17,6 +17,11 @@ const DEFAULT_CONFIG: GenerationConfig = {
   gamut: 'sRGB',
   backgroundColor: LIGHT_BG,
   lightnessMapping: 'fixed',
+  secondary: {
+    mode: 'off',
+    harmonyType: 'complementary',
+    harmonyVariation: 'positive',
+  },
 };
 
 export function App() {
@@ -63,8 +68,15 @@ export function App() {
     const whiteLc = Math.abs(checkAPCAContrast('#ffffff', b[9]));
     const primaryFg = whiteLc >= APCA_MIN_LC ? '#ffffff' : '#000000';
     s.setProperty('--primary-foreground', primaryFg);
-    s.setProperty('--secondary', n[3]);
-    s.setProperty('--secondary-foreground', n[12]);
+    const isSecondaryActive = config.secondary && config.secondary.mode !== 'off';
+    if (isSecondaryActive) {
+      const sec = result.palette.secondary;
+      s.setProperty('--secondary', sec[3]);
+      s.setProperty('--secondary-foreground', sec[12]);
+    } else {
+      s.setProperty('--secondary', n[3]);
+      s.setProperty('--secondary-foreground', n[12]);
+    }
     s.setProperty('--muted', n[3]);
     s.setProperty('--muted-foreground', n[11]);
     s.setProperty('--accent', n[3]);
@@ -97,6 +109,20 @@ export function App() {
     setConfig(prev => ({ ...prev, ...partial }));
   }, []);
 
+  const handleSecondaryColorChange = useCallback((color: string) => {
+    setConfig(prev => ({
+      ...prev,
+      secondary: { ...prev.secondary!, mode: 'custom' as const, customColor: color },
+    }));
+  }, []);
+
+  const handleSecondaryConfigChange = useCallback((partial: Partial<SecondaryConfig>) => {
+    setConfig(prev => ({
+      ...prev,
+      secondary: { ...prev.secondary!, ...partial },
+    }));
+  }, []);
+
   const generateBothThemes = useCallback(() => {
     const lightResult = generatePalette({ ...config, theme: 'light', backgroundColor: LIGHT_BG });
     const darkResult = generatePalette({ ...config, theme: 'dark', backgroundColor: DARK_BG });
@@ -119,6 +145,10 @@ export function App() {
           backgroundColor={config.backgroundColor}
           defaultBackgroundColor={config.theme === 'dark' ? DARK_BG : LIGHT_BG}
           onBackgroundChange={handleBackgroundChange}
+          secondaryConfig={config.secondary}
+          secondaryColor={result?.palette.secondary[9]}
+          onSecondaryColorChange={handleSecondaryColorChange}
+          onSecondaryConfigChange={handleSecondaryConfigChange}
         />
         {result && (
           <>
@@ -127,6 +157,7 @@ export function App() {
               oklchPalette={result.oklchPalette}
               alphaPalette={result.alphaPalette}
               onCopy={handleCopy}
+              secondaryActive={config.secondary?.mode !== 'off'}
             />
             <SettingsSidebar
               config={config}

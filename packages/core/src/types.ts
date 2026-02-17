@@ -15,8 +15,8 @@ export type ColorScale = Record<StepIndex, HexColor>;
 export type OklchScale = Record<StepIndex, OklchColor>;
 
 // Semantic roles
-export type SemanticRole = 'brand' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
-export const SEMANTIC_ROLES: SemanticRole[] = ['brand', 'success', 'warning', 'danger', 'info', 'neutral'];
+export type SemanticRole = 'brand' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+export const SEMANTIC_ROLES: SemanticRole[] = ['brand', 'secondary', 'success', 'warning', 'danger', 'info', 'neutral'];
 
 // Brand step 9 strategy
 export type BrandMode = 'auto' | 'fixed';
@@ -32,6 +32,18 @@ export type NeutralStyle = 'tinted' | 'pure-gray';
 
 // Lightness mapping for steps 1-8
 export type LightnessMapping = 'fixed' | 'interpolated';
+
+// Secondary brand color harmony
+export type HarmonyType = 'complementary' | 'analogous' | 'triadic' | 'split-complementary' | 'tetradic';
+export type HarmonyVariation = 'positive' | 'negative';
+export type SecondaryMode = 'off' | 'auto' | 'custom';
+
+export interface SecondaryConfig {
+  mode: SecondaryMode;
+  harmonyType: HarmonyType;
+  harmonyVariation: HarmonyVariation;
+  customColor?: HexColor;
+}
 
 // Full palette
 export type Palette = Record<SemanticRole, ColorScale>;
@@ -74,7 +86,7 @@ export const DEFAULT_NAMING_CONFIG: NamingConfig = {
     { type: 'separator', value: '/' },
     { type: 'variable', value: 'step' },
   ],
-  roleNames: { brand: 'brand', success: 'success', warning: 'warning', danger: 'danger', info: 'info', neutral: 'neutral' },
+  roleNames: { brand: 'brand', secondary: 'secondary', success: 'success', warning: 'warning', danger: 'danger', info: 'info', neutral: 'neutral' },
   themeNames: { light: 'light', dark: 'dark' },
   modeNames: { solid: 'solid', alpha: 'alpha' },
 };
@@ -107,11 +119,13 @@ export interface GenerationConfig {
   gamut: 'sRGB' | 'P3';
   backgroundColor?: HexColor; // for alpha color computation
   lightnessMapping: LightnessMapping; // fixed = Radix-like offsets, interpolated = adaptive to step 9
+  secondary?: SecondaryConfig;
 }
 
 // Semantic hues result
 export interface SemanticHues {
   brand: number;
+  secondary: number;
   success: number;
   warning: number;
   danger: number;

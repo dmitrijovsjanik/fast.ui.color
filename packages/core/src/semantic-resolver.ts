@@ -35,27 +35,34 @@ function hueDirection(from: number, to: number): number {
 
 export function resolveSemanticHues(
   brandHue: number,
-  neutralStyle: NeutralStyle = 'tinted'
+  neutralStyle: NeutralStyle = 'tinted',
+  secondaryHue?: number,
 ): SemanticHues {
   const result: Partial<SemanticHues> = {
     brand: brandHue,
+    secondary: secondaryHue ?? brandHue,
   };
 
   for (const [role, target] of Object.entries(TARGET_HUES) as [keyof typeof TARGET_HUES, number][]) {
     const range = HUE_RANGES[role];
-    const distance = angularDistance(brandHue, target);
+    const brandDistance = angularDistance(brandHue, target);
+    const secondaryDistance = secondaryHue !== undefined
+      ? angularDistance(secondaryHue, target)
+      : Infinity;
+
+    const closestHue = brandDistance <= secondaryDistance ? brandHue : secondaryHue!;
+    const closestDistance = Math.min(brandDistance, secondaryDistance);
 
     let adjustedHue: number;
 
-    if (distance < 30) {
-      // Brand is too close — push the semantic hue away to avoid collision
-      const pushStrength = (30 - distance) * 0.6;
-      const direction = hueDirection(brandHue, target);
-      // Push in the same direction (away from brand)
+    if (closestDistance < 30) {
+      // Reserved hue (brand or secondary) is too close — push semantic hue away
+      const pushStrength = (30 - closestDistance) * 0.6;
+      const direction = hueDirection(closestHue, target);
       adjustedHue = target + pushStrength * direction;
     } else {
       // Pull slightly toward brand for harmony
-      const pullStrength = Math.min(8, distance * 0.04);
+      const pullStrength = Math.min(8, brandDistance * 0.04);
       const direction = hueDirection(target, brandHue);
       adjustedHue = target + pullStrength * direction;
     }

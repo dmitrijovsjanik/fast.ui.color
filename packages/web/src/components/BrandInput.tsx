@@ -1,4 +1,8 @@
+import type { SecondaryConfig, SecondaryMode, HarmonyType, HarmonyVariation } from '@color-tool/core';
+import { getHarmonyVariations, getHarmonyLabel } from '@color-tool/core';
 import { ColorInput } from './ColorInput';
+import { Label } from '@/components/ui/label';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface BrandInputProps {
   color: string;
@@ -6,9 +10,35 @@ interface BrandInputProps {
   backgroundColor?: string;
   defaultBackgroundColor?: string;
   onBackgroundChange?: (color: string) => void;
+  secondaryConfig?: SecondaryConfig;
+  secondaryColor?: string;
+  onSecondaryColorChange?: (color: string) => void;
+  onSecondaryConfigChange?: (partial: Partial<SecondaryConfig>) => void;
 }
 
-export function BrandInput({ color, onChange, backgroundColor, defaultBackgroundColor, onBackgroundChange }: BrandInputProps) {
+const HARMONY_LABELS: Record<HarmonyType, string> = {
+  'complementary': 'Compl',
+  'analogous': 'Analog',
+  'triadic': 'Triad',
+  'split-complementary': 'Split',
+  'tetradic': 'Tetrad',
+};
+
+export function BrandInput({
+  color,
+  onChange,
+  backgroundColor,
+  defaultBackgroundColor,
+  onBackgroundChange,
+  secondaryConfig,
+  secondaryColor,
+  onSecondaryColorChange,
+  onSecondaryConfigChange,
+}: BrandInputProps) {
+  const isSecondaryActive = secondaryConfig && secondaryConfig.mode !== 'off';
+  const variations = secondaryConfig ? getHarmonyVariations(secondaryConfig.harmonyType) : [];
+  const hasMultipleVariations = variations.length > 1;
+
   return (
     <div className="rounded-xl bg-card p-6 mb-6">
       <div className="flex items-end gap-6">
@@ -22,6 +52,81 @@ export function BrandInput({ color, onChange, backgroundColor, defaultBackground
           />
         )}
       </div>
+
+      {secondaryConfig && onSecondaryConfigChange && (
+        <div className="mt-5 pt-5 border-t border-border">
+          <div className="flex flex-wrap items-end gap-6">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Secondary Brand</Label>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={secondaryConfig.mode}
+                onValueChange={(v) => v && onSecondaryConfigChange({ mode: v as SecondaryMode })}
+              >
+                <ToggleGroupItem value="off">Off</ToggleGroupItem>
+                <ToggleGroupItem value="auto">Auto</ToggleGroupItem>
+                <ToggleGroupItem value="custom">Custom</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            {secondaryConfig.mode === 'auto' && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Harmony</Label>
+                  <ToggleGroup
+                    type="single"
+                    size="sm"
+                    value={secondaryConfig.harmonyType}
+                    onValueChange={(v) => v && onSecondaryConfigChange({ harmonyType: v as HarmonyType })}
+                  >
+                    {(Object.keys(HARMONY_LABELS) as HarmonyType[]).map(type => (
+                      <ToggleGroupItem key={type} value={type}>{HARMONY_LABELS[type]}</ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+
+                {hasMultipleVariations && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Variation</Label>
+                    <ToggleGroup
+                      type="single"
+                      size="sm"
+                      value={secondaryConfig.harmonyVariation}
+                      onValueChange={(v) => v && onSecondaryConfigChange({ harmonyVariation: v as HarmonyVariation })}
+                    >
+                      {variations.map(v => (
+                        <ToggleGroupItem key={v} value={v}>
+                          {getHarmonyLabel(secondaryConfig.harmonyType, v)}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                  </div>
+                )}
+              </>
+            )}
+
+            {secondaryConfig.mode === 'custom' && onSecondaryColorChange && (
+              <ColorInput
+                label="Secondary Color"
+                color={secondaryConfig.customColor || '#E52563'}
+                onChange={onSecondaryColorChange}
+              />
+            )}
+
+            {isSecondaryActive && secondaryColor && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Preview</Label>
+                <div
+                  className="w-9 h-9 rounded-md border border-border"
+                  style={{ backgroundColor: secondaryColor }}
+                  title={secondaryColor}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
