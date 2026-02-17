@@ -143,18 +143,18 @@ const LIGHT_STEP_POSITIONS: Record<number, number> = {
   8: (0.731 - 0.644) / (1.0 - 0.644), // ≈ 0.244
 };
 
-// Same for dark theme steps 1-8 offsets relative to the range from bg to step9.
-// Dark step9 base ≈ 0.644, dark bg ≈ 0.178 → range ≈ 0.466
-// t = offset / maxOffset where maxOffset = step8 offset = 0.290
+// Normalized positions for dark theme adaptive mode.
+// Derived from Radix Blue Dark: position = (stepL - bgL) / (step9L - bgL)
+// bgL ≈ 0.194, step9L ≈ 0.649, range ≈ 0.455
 const DARK_STEP_POSITIONS: Record<number, number> = {
-  1: 0.000 / 0.290, // 0
-  2: 0.020 / 0.290, // ≈ 0.069
-  3: 0.045 / 0.290, // ≈ 0.155
-  4: 0.070 / 0.290, // ≈ 0.241
-  5: 0.100 / 0.290, // ≈ 0.345
-  6: 0.135 / 0.290, // ≈ 0.466
-  7: 0.200 / 0.290, // ≈ 0.690
-  8: 0.290 / 0.290, // 1.0
+  1: 0.000, // bg
+  2: 0.042, // ≈ 0.019/0.455
+  3: 0.176, // ≈ 0.080/0.455
+  4: 0.277, // ≈ 0.126/0.455
+  5: 0.380, // ≈ 0.173/0.455
+  6: 0.488, // ≈ 0.222/0.455
+  7: 0.615, // ≈ 0.280/0.455
+  8: 0.763, // ≈ 0.347/0.455
 };
 
 // Reference white L for computing light theme offsets
@@ -244,40 +244,39 @@ export function generateLightThemeScale(options: ScaleGeneratorOptions): {
   return { oklchScale, hexScale };
 }
 
-// Dark theme lightness — inverted: step 1 = dark bg, step 12 = light text.
-// Steps 9, 10, 11 computed dynamically.
-// Dark theme lightness offsets relative to background L.
+// Dark theme lightness — derived from Radix Blue Dark data.
 // Steps 1-8 are offsets added to bgL (background lightness).
 // Steps 9-12 are absolute values (computed dynamically for 9-11).
 export const DARK_THEME_LIGHTNESS_OFFSETS: Record<StepIndex, number> = {
   1: 0.000,   // Step 1 = background color
-  2: 0.020,   // Subtle surface
-  3: 0.045,   // UI element bg
-  4: 0.070,   // Hovered UI element bg
-  5: 0.100,   // Active / selected
-  6: 0.135,   // Subtle borders
-  7: 0.200,   // UI borders
-  8: 0.290,   // Strong borders
+  2: 0.019,   // Subtle surface
+  3: 0.080,   // UI element bg
+  4: 0.126,   // Hovered UI element bg
+  5: 0.173,   // Active / selected
+  6: 0.222,   // Subtle borders
+  7: 0.280,   // UI borders
+  8: 0.347,   // Strong borders
   9: 0.000,   // Dynamic (absolute, not offset)
   10: 0.000,  // Dynamic
   11: 0.000,  // Dynamic
   12: 0.930,  // High-contrast text (absolute)
 };
 
-// Dark mode chroma: lower for surfaces to avoid neon glow
+// Dark mode chroma — derived from Radix Blue Dark data.
+// Higher saturation in surface steps than previously, matching Radix's vibrant dark surfaces.
 const DARK_CHROMA_FACTORS: Record<StepIndex, number> = {
-  1: 0.02,
-  2: 0.04,
-  3: 0.10,
-  4: 0.16,
-  5: 0.22,
-  6: 0.30,
-  7: 0.40,
-  8: 0.60,
+  1: 0.13,
+  2: 0.16,
+  3: 0.34,
+  4: 0.50,
+  5: 0.55,
+  6: 0.59,
+  7: 0.63,
+  8: 0.73,
   9: 1.00,
-  10: 0.96,
-  11: 0.60,
-  12: 0.25,
+  10: 0.88,
+  11: 0.65,
+  12: 0.26,
 };
 
 function darkChromaForStep(step: StepIndex, peakChroma: number): number {
@@ -320,8 +319,9 @@ export function generateDarkThemeScale(options: ScaleGeneratorOptions): {
   }
 
   // In dark mode: hover is lighter, text steps are high-lightness
-  const step10L = step9L + 0.030;
-  const step11L = 0.750;
+  // Radix blue dark: step9=0.649, step10=0.688 (Δ=+0.039), step11=0.764 (Δ=+0.115)
+  const step10L = step9L + 0.039;
+  const step11L = step9L + 0.115;
 
   for (const step of STEP_INDICES) {
     let l: number;
