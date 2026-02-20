@@ -1,5 +1,6 @@
 import type { Palette, AlphaPalette, OklchPalette, NamingConfig, SemanticRole } from '../types';
 import { SEMANTIC_ROLES, STEP_INDICES } from '../types';
+import { colorToFloatComponents } from '../gamut-mapper';
 
 export interface DTCGExportInput {
   light: { palette: Palette; oklchPalette: OklchPalette; alphaPalette?: AlphaPalette };
@@ -8,15 +9,12 @@ export interface DTCGExportInput {
   excludeRoles?: SemanticRole[];
 }
 
-function hexToComponents(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  return [round(r), round(g), round(b)];
-}
-
 function round(n: number): number {
   return Math.round(n * 1000) / 1000;
+}
+
+function isP3Color(color: string): boolean {
+  return color.startsWith('color(display-p3');
 }
 
 export function exportDTCG(input: DTCGExportInput): string {
@@ -44,15 +42,16 @@ export function exportDTCG(input: DTCGExportInput): string {
       };
 
       for (const step of STEP_INDICES) {
-        const hex = data.palette[role][step];
+        const color = data.palette[role][step];
         const oklch = data.oklchPalette[role][step];
-        const [r, g, b] = hexToComponents(hex);
+        const p3 = isP3Color(color);
+        const [r, g, b] = colorToFloatComponents(color).map(round) as [number, number, number];
 
         solidGroup[String(step)] = {
           $value: {
-            colorSpace: 'srgb',
+            colorSpace: p3 ? 'display-p3' : 'srgb',
             components: [r, g, b],
-            hex,
+            ...(p3 ? {} : { hex: color }),
           },
           $extensions: {
             'com.fast-ui': {
@@ -77,10 +76,22 @@ export function exportDTCG(input: DTCGExportInput): string {
 
         for (const step of STEP_INDICES) {
           const alpha = data.alphaPalette[role][step];
+          const p3 = alpha.css.startsWith('color(display-p3');
+
+          // For P3: parse float components from css string; for sRGB: use r/g/b integers
+          const components: [number, number, number] = p3
+            ? (() => {
+                const m = alpha.css.match(/color\(display-p3\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+                return m
+                  ? [round(parseFloat(m[1])), round(parseFloat(m[2])), round(parseFloat(m[3]))]
+                  : [round(alpha.r / 255), round(alpha.g / 255), round(alpha.b / 255)];
+              })()
+            : [round(alpha.r / 255), round(alpha.g / 255), round(alpha.b / 255)];
+
           alphaGroup[String(step)] = {
             $value: {
-              colorSpace: 'srgb',
-              components: [round(alpha.r / 255), round(alpha.g / 255), round(alpha.b / 255)],
+              colorSpace: p3 ? 'display-p3' : 'srgb',
+              components,
               alpha: round(alpha.a),
             },
           };

@@ -116,7 +116,7 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
   if (config.backgroundColor) {
     alphaPalette = {} as AlphaPalette;
     for (const role of SEMANTIC_ROLES) {
-      alphaPalette[role] = computeAlphaScale(palette[role], config.backgroundColor);
+      alphaPalette[role] = computeAlphaScale(palette[role], config.backgroundColor, config.gamut);
     }
   }
 

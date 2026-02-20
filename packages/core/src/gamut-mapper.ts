@@ -226,6 +226,22 @@ export function colorToRGB(color: string): [number, number, number] {
   ];
 }
 
+// Parse a color string to gamma-encoded float [0-1] components in its native space.
+// For hex: returns sRGB gamma components (0-1).
+// For color(display-p3 r g b): returns P3 gamma components (0-1).
+export function colorToFloatComponents(color: string): [number, number, number] {
+  const p3 = P3_RE.exec(color);
+  if (p3) {
+    return [parseFloat(p3[1]), parseFloat(p3[2]), parseFloat(p3[3])];
+  }
+  const h = color.replace('#', '');
+  return [
+    parseInt(h.slice(0, 2), 16) / 255,
+    parseInt(h.slice(2, 4), 16) / 255,
+    parseInt(h.slice(4, 6), 16) / 255,
+  ];
+}
+
 // Parse HEX to OKLCH using culori (for input conversion)
 const toOklch = converter('oklch');
 
