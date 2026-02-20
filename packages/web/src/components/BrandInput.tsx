@@ -200,17 +200,6 @@ export function BrandInput({
               </Label>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Switch
-                id="adaptive-lightness"
-                checked={config.lightnessMapping === 'interpolated'}
-                onCheckedChange={(checked) => onConfigChange({ lightnessMapping: checked ? 'interpolated' : 'fixed' })}
-              />
-              <Label htmlFor="adaptive-lightness" className="text-xs text-muted-foreground cursor-pointer">
-                Adaptive Lightness
-              </Label>
-            </div>
-
             {/* Display & Theme — right-aligned */}
             <div className="flex items-center gap-6 ml-auto">
               {displayMode && onDisplayModeChange && (

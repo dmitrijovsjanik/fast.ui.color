@@ -70,7 +70,6 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
       ? brandOklch.c
       : undefined,
     backgroundLightness: bgL,
-    lightnessMapping: config.lightnessMapping,
   });
   const brandStep9L = brandScale.oklchScale[9].l;
 
@@ -84,7 +83,6 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
     isNeutral: false,
     brandLightness: brandStep9L,
     backgroundLightness: bgL,
-    lightnessMapping: config.lightnessMapping,
   });
 
   for (const role of SEMANTIC_ROLES) {
@@ -107,8 +105,7 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
       isNeutral,
       brandLightness: isNeutral ? undefined : brandStep9L,
       backgroundLightness: bgL,
-      lightnessMapping: config.lightnessMapping,
-    });
+      });
 
     palette[role] = hexScale;
     oklchPalette[role] = oklchScale;

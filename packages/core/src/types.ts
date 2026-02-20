@@ -35,9 +35,6 @@ export type ThemeMode = 'light' | 'dark';
 // Neutral style
 export type NeutralStyle = 'tinted' | 'pure-gray';
 
-// Lightness mapping for steps 1-8
-export type LightnessMapping = 'fixed' | 'interpolated';
-
 // Secondary brand color harmony
 export type HarmonyType = 'complementary' | 'analogous' | 'triadic' | 'split-complementary' | 'tetradic';
 export type HarmonyVariation = 'positive' | 'negative';
@@ -123,7 +120,6 @@ export interface GenerationConfig {
   neutralStyle: NeutralStyle;
   gamut: 'sRGB' | 'P3';
   backgroundColor?: HexColor; // for alpha color computation
-  lightnessMapping: LightnessMapping; // fixed = Radix-like offsets, interpolated = adaptive to step 9
   darkBrandAdaptation: DarkBrandAdaptation; // how fixed brand adapts in dark theme
   secondary?: SecondaryConfig;
 }

@@ -10,6 +10,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const LIGHT_BG = '#ffffff';
 const DARK_BG = '#111113';
+const PAGE_BG_DARK = '#000000';
+const PAGE_BG_LIGHT = '#ffffff';
 
 const DEFAULT_CONFIG: GenerationConfig = {
   brandColor: '#2563EB',
@@ -19,7 +21,6 @@ const DEFAULT_CONFIG: GenerationConfig = {
   neutralStyle: 'tinted',
   gamut: 'sRGB',
   backgroundColor: LIGHT_BG,
-  lightnessMapping: 'fixed',
   darkBrandAdaptation: 'adaptive',
   secondary: {
     mode: 'off',
@@ -34,6 +35,7 @@ export function App() {
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [namingConfig, setNamingConfig] = useState<NamingConfig>(DEFAULT_NAMING_CONFIG);
   const [displayMode, setDisplayMode] = useState<'semantic' | 'fill'>('semantic');
+  const [colorFormat, setColorFormat] = useState<'alpha' | 'solid'>('alpha');
   const [vizTab, setVizTab] = useState<'hue-map' | 'showcase'>('hue-map');
   // Sync dark class on <html>
   useEffect(() => {
@@ -61,9 +63,10 @@ export function App() {
     const b = result.palette.brand;
 
     // Map palette steps to shadcn tokens
-    s.setProperty('--background', config.theme === 'dark' ? '#000000' : n[2]);
+    const isDark = config.theme === 'dark';
+    s.setProperty('--background', isDark ? PAGE_BG_DARK : n[1]);
     s.setProperty('--foreground', n[12]);
-    s.setProperty('--card', config.backgroundColor || (config.theme === 'dark' ? n[3] : '#ffffff'));
+    s.setProperty('--card', config.backgroundColor);
     s.setProperty('--card-foreground', n[12]);
     s.setProperty('--popover', n[1]);
     s.setProperty('--popover-foreground', n[12]);
@@ -90,7 +93,7 @@ export function App() {
     s.setProperty('--border', n[6]);
     s.setProperty('--input', n[6]);
     s.setProperty('--ring', b[9]);
-  }, [result]);
+  }, [result, config.backgroundColor, config.theme]);
 
   const handleBrandColorChange = useCallback((color: string) => {
     setConfig(prev => ({ ...prev, brandColor: color }));
@@ -171,6 +174,8 @@ export function App() {
               onCopy={handleCopy}
               secondaryActive={config.secondary?.mode !== 'off'}
               displayMode={displayMode}
+              colorFormat={colorFormat}
+              onColorFormatChange={setColorFormat}
             />
             <div className="rounded-xl bg-card p-6 mb-6">
               <ToggleGroup
