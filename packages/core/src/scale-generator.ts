@@ -425,17 +425,22 @@ export function generateLightThemeScale(options: ScaleGeneratorOptions): {
   return { oklchScale, hexScale };
 }
 
-// Dark mode chroma — surfaces carry more tint than light theme (Radix dark pattern),
-// Helmholtz-Kohlrausch compensation on steps 9-10 (-15%).
+// Dark mode chroma — Hunt effect compensation on steps 3-8.
+// Dark backgrounds reduce perceived saturation (Hunt 1952, CIECAM02 F_L factor).
+// Steps 1-2: already compensated (2x/1.33x of light).
+// Steps 3-8: boosted ~15-20% above light factors to restore perceptual parity.
+// Steps 9-10: Helmholtz-Kohlrausch compensation (-15%) — saturated colors
+//   appear brighter on dark backgrounds (up to 2.5x for blue hues).
+// Step 11-12: text colors, kept lower for readability.
 const DARK_CHROMA_FACTORS: Record<StepIndex, number> = {
   1: 0.04,
   2: 0.08,
-  3: 0.16,
-  4: 0.26,
-  5: 0.34,
-  6: 0.42,
-  7: 0.55,
-  8: 0.74,
+  3: 0.22,
+  4: 0.32,
+  5: 0.40,
+  6: 0.50,
+  7: 0.62,
+  8: 0.80,
   9: 0.85,
   10: 0.80,
   11: 0.65,
