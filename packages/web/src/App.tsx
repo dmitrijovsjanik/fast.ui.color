@@ -4,7 +4,9 @@ import { Header } from './components/Header';
 import { BrandInput } from './components/BrandInput';
 import { PaletteMatrix } from './components/PaletteMatrix';
 import { IttenWheel } from './components/IttenWheel';
+import { ComponentShowcase } from './components/ComponentShowcase';
 import { SettingsSidebar } from './components/SettingsSidebar';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const LIGHT_BG = '#ffffff';
 const DARK_BG = '#111113';
@@ -32,6 +34,7 @@ export function App() {
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [namingConfig, setNamingConfig] = useState<NamingConfig>(DEFAULT_NAMING_CONFIG);
   const [displayMode, setDisplayMode] = useState<'semantic' | 'fill'>('semantic');
+  const [vizTab, setVizTab] = useState<'hue-map' | 'showcase'>('hue-map');
   // Sync dark class on <html>
   useEffect(() => {
     document.documentElement.classList.toggle('dark', config.theme === 'dark');
@@ -169,11 +172,27 @@ export function App() {
               secondaryActive={config.secondary?.mode !== 'off'}
               displayMode={displayMode}
             />
-            <IttenWheel
-              semanticHues={result.semanticHues}
-              palette={result.palette}
-              secondaryActive={config.secondary?.mode !== 'off'}
-            />
+            <div className="rounded-xl bg-card p-6 mb-6">
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={vizTab}
+                onValueChange={(v) => v && setVizTab(v as 'hue-map' | 'showcase')}
+              >
+                <ToggleGroupItem value="hue-map">Hue Map</ToggleGroupItem>
+                <ToggleGroupItem value="showcase">Showcase</ToggleGroupItem>
+              </ToggleGroup>
+              {vizTab === 'hue-map' && (
+                <IttenWheel
+                  semanticHues={result.semanticHues}
+                  palette={result.palette}
+                  secondaryActive={config.secondary?.mode !== 'off'}
+                />
+              )}
+              {vizTab === 'showcase' && (
+                <ComponentShowcase palette={result.palette} alphaPalette={result.alphaPalette} />
+              )}
+            </div>
             <SettingsSidebar
               result={result}
               onCopy={handleCopy}

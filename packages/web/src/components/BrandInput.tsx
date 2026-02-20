@@ -166,18 +166,17 @@ export function BrandInput({
               </Label>
             </div>
 
-            {config.brandMode === 'fixed' && (
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="fixed-dark-brand"
-                  checked={config.darkBrandAdaptation === 'fixed'}
-                  onCheckedChange={(checked) => onConfigChange({ darkBrandAdaptation: checked ? 'fixed' : 'adaptive' })}
-                />
-                <Label htmlFor="fixed-dark-brand" className="text-xs text-muted-foreground cursor-pointer">
-                  Fixed Dark Brand
-                </Label>
-              </div>
-            )}
+            <div className={`flex items-center gap-2 ${config.brandMode !== 'fixed' ? 'opacity-40' : ''}`}>
+              <Switch
+                id="fixed-dark-brand"
+                checked={config.darkBrandAdaptation === 'fixed'}
+                onCheckedChange={(checked) => onConfigChange({ darkBrandAdaptation: checked ? 'fixed' : 'adaptive' })}
+                disabled={config.brandMode !== 'fixed'}
+              />
+              <Label htmlFor="fixed-dark-brand" className={`text-xs text-muted-foreground ${config.brandMode === 'fixed' ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                Fixed Dark Brand
+              </Label>
+            </div>
 
             <div className="flex items-center gap-2">
               <Switch

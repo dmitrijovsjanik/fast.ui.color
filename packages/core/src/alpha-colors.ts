@@ -1,14 +1,6 @@
 import type { HexColor, AlphaColor, AlphaColorScale, ColorScale, StepIndex } from './types';
 import { STEP_INDICES } from './types';
-
-function hexToRGB(hex: HexColor): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [
-    parseInt(h.slice(0, 2), 16),
-    parseInt(h.slice(2, 4), 16),
-    parseInt(h.slice(4, 6), 16),
-  ];
-}
+import { colorToRGB } from './gamut-mapper';
 
 // Given a solid target color and a background, find the semi-transparent
 // RGBA that composites to the same visual result over that background.
@@ -17,8 +9,8 @@ export function computeAlphaColor(
   solidHex: HexColor,
   backgroundHex: HexColor
 ): AlphaColor {
-  const [sr, sg, sb] = hexToRGB(solidHex);
-  const [br, bg, bb] = hexToRGB(backgroundHex);
+  const [sr, sg, sb] = colorToRGB(solidHex);
+  const [br, bg, bb] = colorToRGB(backgroundHex);
 
   // If solid === background, fully transparent
   if (sr === br && sg === bg && sb === bb) {

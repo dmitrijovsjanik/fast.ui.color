@@ -93,10 +93,8 @@ export function IttenWheel({ semanticHues, palette, secondaryActive }: IttenWhee
   const LABEL_R = OUTER_R + 14;
 
   return (
-    <div className="rounded-xl bg-card p-6 mb-6">
-      <p className="text-xs text-muted-foreground mb-4">Hue Map</p>
-      <div className="flex justify-center">
-        <svg
+    <div className="mt-4 flex justify-center">
+      <svg
           width={SIZE + 80}
           height={SIZE + 40}
           viewBox={`-40 -20 ${SIZE + 80} ${SIZE + 40}`}
@@ -204,7 +202,6 @@ export function IttenWheel({ semanticHues, palette, secondaryActive }: IttenWhee
             );
           })}
         </svg>
-      </div>
     </div>
   );
 }

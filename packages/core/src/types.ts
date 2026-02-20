@@ -21,6 +21,11 @@ export const SEMANTIC_ROLES: SemanticRole[] = ['brand', 'secondary', 'success', 
 // Brand step 9 strategy
 export type BrandMode = 'auto' | 'fixed';
 
+// Dark theme brand adaptation when brandMode is 'fixed'
+// 'adaptive' = keep hue/chroma, adapt lightness algorithmically (recommended)
+// 'fixed' = use exact same color in dark theme (may have contrast issues)
+export type DarkBrandAdaptation = 'adaptive' | 'fixed';
+
 // Chroma equalization across semantic roles
 export type ChromaEqualization = 'independent' | 'equal';
 
@@ -119,6 +124,7 @@ export interface GenerationConfig {
   gamut: 'sRGB' | 'P3';
   backgroundColor?: HexColor; // for alpha color computation
   lightnessMapping: LightnessMapping; // fixed = Radix-like offsets, interpolated = adaptive to step 9
+  darkBrandAdaptation: DarkBrandAdaptation; // how fixed brand adapts in dark theme
   secondary?: SecondaryConfig;
 }
 

@@ -54,13 +54,21 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
   const palette = {} as Palette;
   const oklchPalette = {} as OklchPalette;
 
+  // Dark mode + fixed brand + adaptive: keep hue, adapt lightness, cap chroma
+  const useFixedBrand = config.brandMode === 'fixed'
+    && !(isDark && config.darkBrandAdaptation === 'adaptive');
+
   // First, compute the brand scale to know its step 9 L
   const brandScale = generateScale({
     hue: hues.brand,
     peakChroma: chromas.brand,
     gamut: config.gamut,
-    fixedStep9: config.brandMode === 'fixed' ? brandOklch : undefined,
+    fixedStep9: useFixedBrand ? brandOklch : undefined,
     isNeutral: false,
+    // When adapting in dark mode, pass user's chroma as ceiling
+    brandChromaCeiling: (isDark && config.darkBrandAdaptation === 'adaptive' && config.brandMode === 'fixed')
+      ? brandOklch.c
+      : undefined,
     backgroundLightness: bgL,
     lightnessMapping: config.lightnessMapping,
   });

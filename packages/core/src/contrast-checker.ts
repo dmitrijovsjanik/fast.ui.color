@@ -1,15 +1,12 @@
 import type { HexColor, Palette, SemanticRole, StepIndex, ContrastResult, AccessibilityReport } from './types';
 import { SEMANTIC_ROLES } from './types';
+import { colorToRGB } from './gamut-mapper';
 
 // --- WCAG 2.x Contrast ---
 
-function hexToRGB(hex: HexColor): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [
-    parseInt(h.slice(0, 2), 16) / 255,
-    parseInt(h.slice(2, 4), 16) / 255,
-    parseInt(h.slice(4, 6), 16) / 255,
-  ];
+function parseRGB01(color: HexColor): [number, number, number] {
+  const [r, g, b] = colorToRGB(color);
+  return [r / 255, g / 255, b / 255];
 }
 
 function relativeLuminance(r: number, g: number, b: number): number {
@@ -20,8 +17,8 @@ function relativeLuminance(r: number, g: number, b: number): number {
 }
 
 export function checkWCAGContrast(fg: HexColor, bg: HexColor): number {
-  const [r1, g1, b1] = hexToRGB(fg);
-  const [r2, g2, b2] = hexToRGB(bg);
+  const [r1, g1, b1] = parseRGB01(fg);
+  const [r2, g2, b2] = parseRGB01(bg);
   const l1 = relativeLuminance(r1, g1, b1);
   const l2 = relativeLuminance(r2, g2, b2);
   const lighter = Math.max(l1, l2);
@@ -34,7 +31,7 @@ export function checkWCAGContrast(fg: HexColor, bg: HexColor): number {
 // Returns Lc value (0-106 range, negative means reversed polarity)
 
 function sRGBtoY(hex: HexColor): number {
-  const [r, g, b] = hexToRGB(hex);
+  const [r, g, b] = parseRGB01(hex);
   // Linearize with sRGB TRC (piecewise)
   const lin = (c: number) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   // APCA uses different coefficients than WCAG

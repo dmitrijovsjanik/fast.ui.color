@@ -124,6 +124,7 @@ export interface ScaleGeneratorOptions {
   fixedStep9?: OklchColor; // Lock step 9 to exact brand color
   isNeutral?: boolean;
   brandLightness?: number; // Brand step 9 L — semantics shift toward it
+  brandChromaCeiling?: number; // Max chroma from user's brand (dark adaptive mode)
   backgroundLightness?: number; // L of background color (both themes)
   lightnessMapping?: LightnessMapping; // fixed = offset-based, interpolated = adaptive
 }
@@ -292,7 +293,7 @@ export function generateDarkThemeScale(options: ScaleGeneratorOptions): {
   oklchScale: OklchScale;
   hexScale: ColorScale;
 } {
-  const { hue, peakChroma, gamut, fixedStep9, isNeutral = false, brandLightness, backgroundLightness, lightnessMapping = 'fixed' } = options;
+  const { hue, peakChroma, gamut, fixedStep9, isNeutral = false, brandLightness, brandChromaCeiling, backgroundLightness, lightnessMapping = 'fixed' } = options;
 
   const oklchScale = {} as OklchScale;
   const hexScale = {} as ColorScale;
@@ -323,7 +324,10 @@ export function generateDarkThemeScale(options: ScaleGeneratorOptions): {
     }
 
     step9L = baseL;
-    step9C = peakChroma;
+    // In adaptive dark mode, cap chroma to user's brand chroma with H-K compensation
+    step9C = brandChromaCeiling !== undefined
+      ? Math.min(peakChroma, brandChromaCeiling * 0.85)
+      : peakChroma;
   }
 
   // In dark mode: hover is lighter, text steps are high-lightness
