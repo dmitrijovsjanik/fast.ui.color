@@ -3,6 +3,7 @@ import { generatePalette, checkAPCAContrast, DEFAULT_NAMING_CONFIG, type Generat
 import { Header } from './components/Header';
 import { BrandInput } from './components/BrandInput';
 import { PaletteMatrix } from './components/PaletteMatrix';
+import { IttenWheel } from './components/IttenWheel';
 import { SettingsSidebar } from './components/SettingsSidebar';
 
 const LIGHT_BG = '#ffffff';
@@ -17,6 +18,7 @@ const DEFAULT_CONFIG: GenerationConfig = {
   gamut: 'sRGB',
   backgroundColor: LIGHT_BG,
   lightnessMapping: 'fixed',
+  darkBrandAdaptation: 'adaptive',
   secondary: {
     mode: 'off',
     harmonyType: 'complementary',
@@ -166,6 +168,11 @@ export function App() {
               onCopy={handleCopy}
               secondaryActive={config.secondary?.mode !== 'off'}
               displayMode={displayMode}
+            />
+            <IttenWheel
+              semanticHues={result.semanticHues}
+              palette={result.palette}
+              secondaryActive={config.secondary?.mode !== 'off'}
             />
             <SettingsSidebar
               result={result}
