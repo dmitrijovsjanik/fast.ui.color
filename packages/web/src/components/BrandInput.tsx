@@ -3,7 +3,9 @@ import { getHarmonyVariations, getHarmonyLabel } from '@color-tool/core';
 import { ColorInput } from './ColorInput';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Sun, Moon, Blend } from 'lucide-react';
 
 interface BrandInputProps {
   color: string;
@@ -21,6 +23,8 @@ interface BrandInputProps {
   onDisplayModeChange?: (mode: 'semantic' | 'fill') => void;
   theme?: ThemeMode;
   onThemeToggle?: () => void;
+  colorFormat?: 'alpha' | 'solid';
+  onColorFormatChange?: (format: 'alpha' | 'solid') => void;
 }
 
 const HARMONY_LABELS: Record<HarmonyType, string> = {
@@ -47,6 +51,8 @@ export function BrandInput({
   onDisplayModeChange,
   theme,
   onThemeToggle,
+  colorFormat,
+  onColorFormatChange,
 }: BrandInputProps) {
   const isSecondaryActive = secondaryConfig && secondaryConfig.mode !== 'off';
   const variations = secondaryConfig ? getHarmonyVariations(secondaryConfig.harmonyType) : [];
@@ -214,18 +220,30 @@ export function BrandInput({
                   </Label>
                 </div>
               )}
-              {theme && onThemeToggle && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="dark-theme"
-                    checked={theme === 'dark'}
-                    onCheckedChange={() => onThemeToggle()}
-                  />
-                  <Label htmlFor="dark-theme" className="text-xs text-muted-foreground cursor-pointer">
-                    Dark Theme
-                  </Label>
-                </div>
-              )}
+              <div className="flex items-center gap-1">
+                {colorFormat && onColorFormatChange && (
+                  <Toggle
+                    size="sm"
+                    pressed={colorFormat === 'alpha'}
+                    onPressedChange={(pressed) => onColorFormatChange(pressed ? 'alpha' : 'solid')}
+                    aria-label="Toggle alpha colors"
+                    title={colorFormat === 'alpha' ? 'Alpha colors' : 'Solid colors'}
+                  >
+                    <Blend className="h-4 w-4" />
+                  </Toggle>
+                )}
+                {theme && onThemeToggle && (
+                  <Toggle
+                    size="sm"
+                    pressed={theme === 'dark'}
+                    onPressedChange={() => onThemeToggle()}
+                    aria-label="Toggle dark theme"
+                    title={theme === 'dark' ? 'Dark theme' : 'Light theme'}
+                  >
+                    {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  </Toggle>
+                )}
+              </div>
             </div>
           </div>
         </div>

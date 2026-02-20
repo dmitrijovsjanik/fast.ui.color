@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { Palette, OklchPalette, AlphaPalette, SemanticRole, StepIndex } from '@color-tool/core';
 import { SEMANTIC_ROLES, STEP_INDICES, checkAPCAContrast } from '@color-tool/core';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface PaletteMatrixProps {
   palette: Palette;
@@ -11,7 +10,6 @@ interface PaletteMatrixProps {
   secondaryActive?: boolean;
   displayMode: 'semantic' | 'fill';
   colorFormat: 'alpha' | 'solid';
-  onColorFormatChange: (format: 'alpha' | 'solid') => void;
 }
 
 const ROLE_LABELS: Record<SemanticRole, string> = {
@@ -39,7 +37,7 @@ function getAaColor(step: StepIndex, scale: Record<StepIndex, string>): string |
   return null;
 }
 
-export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, secondaryActive, displayMode, colorFormat, onColorFormatChange }: PaletteMatrixProps) {
+export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, secondaryActive, displayMode, colorFormat }: PaletteMatrixProps) {
   const [hoveredCell, setHoveredCell] = useState<string | null>(null);
 
   const displayRoles = secondaryActive
@@ -50,7 +48,7 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
 
   return (
     <div className="rounded-xl bg-card p-6 mb-6">
-      {/* Header row: step numbers + format toggle */}
+      {/* Header row: step numbers */}
       <div className="flex items-center mb-2">
         <div className="w-20 shrink-0" />
         <div className="flex-1 grid grid-cols-12 gap-1">
@@ -64,17 +62,6 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
               {step}
             </div>
           ))}
-        </div>
-        <div className="shrink-0 ml-3">
-          <ToggleGroup
-            type="single"
-            size="sm"
-            value={colorFormat}
-            onValueChange={(v) => v && onColorFormatChange(v as 'alpha' | 'solid')}
-          >
-            <ToggleGroupItem value="alpha" className="text-xs px-2">Alpha</ToggleGroupItem>
-            <ToggleGroupItem value="solid" className="text-xs px-2">Solid</ToggleGroupItem>
-          </ToggleGroup>
         </div>
       </div>
 
@@ -138,7 +125,6 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
               );
             })}
           </div>
-          <div className="w-[106px] shrink-0 ml-3" />
         </div>
       ))}
 

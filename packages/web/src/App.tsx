@@ -164,6 +164,8 @@ export function App() {
           onDisplayModeChange={setDisplayMode}
           theme={config.theme}
           onThemeToggle={handleThemeToggle}
+          colorFormat={colorFormat}
+          onColorFormatChange={setColorFormat}
         />
         {result && (
           <>
@@ -175,7 +177,6 @@ export function App() {
               secondaryActive={config.secondary?.mode !== 'off'}
               displayMode={displayMode}
               colorFormat={colorFormat}
-              onColorFormatChange={setColorFormat}
             />
             <div className="rounded-xl bg-card p-6 mb-6">
               <ToggleGroup
