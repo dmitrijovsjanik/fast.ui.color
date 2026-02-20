@@ -30,7 +30,6 @@ export function App() {
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [namingConfig, setNamingConfig] = useState<NamingConfig>(DEFAULT_NAMING_CONFIG);
   const [displayMode, setDisplayMode] = useState<'semantic' | 'fill'>('semantic');
-
   // Sync dark class on <html>
   useEffect(() => {
     document.documentElement.classList.toggle('dark', config.theme === 'dark');
@@ -78,9 +77,10 @@ export function App() {
       s.setProperty('--secondary', n[3]);
       s.setProperty('--secondary-foreground', n[12]);
     }
-    s.setProperty('--muted', n[3]);
+    const na = result.alphaPalette?.neutral;
+    s.setProperty('--muted', na ? na[3].css : n[3]);
     s.setProperty('--muted-foreground', n[11]);
-    s.setProperty('--accent', n[3]);
+    s.setProperty('--accent', na ? na[3].css : n[3]);
     s.setProperty('--accent-foreground', n[12]);
     s.setProperty('--border', n[6]);
     s.setProperty('--input', n[6]);
@@ -173,6 +173,7 @@ export function App() {
               namingConfig={namingConfig}
               onNamingConfigChange={setNamingConfig}
               onGenerateBothThemes={generateBothThemes}
+              secondaryActive={config.secondary?.mode !== 'off'}
             />
           </>
         )}

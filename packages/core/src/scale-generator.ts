@@ -113,7 +113,7 @@ function chromaForStep(step: StepIndex, peakChroma: number, step9L: number): num
 // Chroma for neutral scales (very low, nearly uniform)
 function neutralChromaForStep(step: StepIndex, neutralChroma: number): number {
   const t = (step - 1) / 11;
-  const bump = 1 + 0.3 * 4 * t * (1 - t);
+  const bump = 1 + 0.15 * 4 * t * (1 - t);
   return neutralChroma * bump;
 }
 
@@ -185,11 +185,15 @@ export function generateLightThemeScale(options: ScaleGeneratorOptions): {
       ? LIGHT_THEME_LIGHTNESS[9]
       : computeStep9Lightness(hue, gamut);
 
-    // Shift semantic roles toward brand lightness
+    // Shift semantic roles toward brand lightness (attenuated for extreme brands)
     if (brandLightness !== undefined && !isNeutral) {
-      const blendFactor = 0.35;
+      const deviation = Math.abs(brandLightness - baseL);
+      // Attenuate blend when brand is far from natural lightness (>0.15 deviation)
+      const blendFactor = deviation > 0.15
+        ? 0.35 * (0.15 / deviation)
+        : 0.35;
       baseL = baseL + (brandLightness - baseL) * blendFactor;
-      baseL = Math.max(0.45, Math.min(0.90, baseL));
+      baseL = Math.max(0.55, Math.min(0.85, baseL));
     }
 
     step9L = baseL;
@@ -262,17 +266,17 @@ export const DARK_THEME_LIGHTNESS_OFFSETS: Record<StepIndex, number> = {
   12: 0.930,  // High-contrast text (absolute)
 };
 
-// Dark mode chroma — reduced for surfaces (steps 1-5) to avoid eye strain,
-// and Helmholtz-Kohlrausch compensation on steps 9-10 (-15%).
+// Dark mode chroma — surfaces carry more tint than light theme (Radix dark pattern),
+// Helmholtz-Kohlrausch compensation on steps 9-10 (-15%).
 const DARK_CHROMA_FACTORS: Record<StepIndex, number> = {
-  1: 0.02,
-  2: 0.04,
-  3: 0.10,
-  4: 0.18,
-  5: 0.25,
-  6: 0.35,
-  7: 0.50,
-  8: 0.70,
+  1: 0.04,
+  2: 0.08,
+  3: 0.16,
+  4: 0.26,
+  5: 0.34,
+  6: 0.42,
+  7: 0.55,
+  8: 0.74,
   9: 0.85,
   10: 0.80,
   11: 0.65,
@@ -308,10 +312,14 @@ export function generateDarkThemeScale(options: ScaleGeneratorOptions): {
       ? 0.644
       : computeStep9Lightness(hue, gamut);
 
+    // Attenuated blend for extreme brand lightness values
     if (brandLightness !== undefined && !isNeutral) {
-      const blendFactor = 0.35;
+      const deviation = Math.abs(brandLightness - baseL);
+      const blendFactor = deviation > 0.15
+        ? 0.35 * (0.15 / deviation)
+        : 0.35;
       baseL = baseL + (brandLightness - baseL) * blendFactor;
-      baseL = Math.max(0.45, Math.min(0.90, baseL));
+      baseL = Math.max(0.55, Math.min(0.85, baseL));
     }
 
     step9L = baseL;

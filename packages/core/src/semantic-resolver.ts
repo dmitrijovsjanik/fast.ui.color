@@ -8,13 +8,16 @@ const TARGET_HUES = {
   info: 245,
 } as const;
 
-// Valid ranges for each role
+// Valid ranges for each role — widened to allow stronger harmony pull
 const HUE_RANGES = {
-  success: { min: 130, max: 160 },
-  warning: { min: 60, max: 90 },
-  danger: { min: 15, max: 35 },
-  info: { min: 230, max: 260 },
+  success: { min: 120, max: 165 },
+  warning: { min: 55, max: 95 },
+  danger: { min: 10, max: 40 },
+  info: { min: 220, max: 265 },
 } as const;
+
+// Minimum angular distance between any two semantic hues
+const MIN_SEMANTIC_DISTANCE = 25;
 
 // Angular distance on the hue circle (0-180)
 function angularDistance(h1: number, h2: number): number {
@@ -33,6 +36,17 @@ function hueDirection(from: number, to: number): number {
   return diff <= 180 ? 1 : -1;
 }
 
+// Nonlinear pull curve — stronger pull for mid-range distances,
+// tapering off for very close and very distant hues
+function harmonyPullStrength(brandDistance: number): number {
+  // Max pull = 18°. Curve: rises from 0 at distance=30, peaks ~120°, tapers off
+  // Uses a smoothstep-like function for natural feel
+  if (brandDistance <= 30) return 0; // Inside conflict zone, handled by push
+  const t = Math.min(1, (brandDistance - 30) / 120); // 0-1 over 30°-150° range
+  const smooth = t * t * (3 - 2 * t); // smoothstep
+  return 18 * smooth;
+}
+
 export function resolveSemanticHues(
   brandHue: number,
   neutralStyle: NeutralStyle = 'tinted',
@@ -43,7 +57,13 @@ export function resolveSemanticHues(
     secondary: secondaryHue ?? brandHue,
   };
 
-  for (const [role, target] of Object.entries(TARGET_HUES) as [keyof typeof TARGET_HUES, number][]) {
+  const semanticRoles = Object.keys(TARGET_HUES) as (keyof typeof TARGET_HUES)[];
+
+  // Phase 1: Compute initial adjusted hues (brand/secondary conflict + harmony pull)
+  const adjusted: Record<keyof typeof TARGET_HUES, number> = {} as any;
+
+  for (const role of semanticRoles) {
+    const target = TARGET_HUES[role];
     const range = HUE_RANGES[role];
     const brandDistance = angularDistance(brandHue, target);
     const secondaryDistance = secondaryHue !== undefined
@@ -61,13 +81,40 @@ export function resolveSemanticHues(
       const direction = hueDirection(closestHue, target);
       adjustedHue = target + pushStrength * direction;
     } else {
-      // Pull slightly toward brand for harmony
-      const pullStrength = Math.min(8, brandDistance * 0.04);
+      // Pull toward brand for harmony — nonlinear, stronger pull
+      const pullStrength = harmonyPullStrength(brandDistance);
       const direction = hueDirection(target, brandHue);
       adjustedHue = target + pullStrength * direction;
     }
 
-    result[role] = clampHue(adjustedHue, range.min, range.max);
+    adjusted[role] = clampHue(adjustedHue, range.min, range.max);
+  }
+
+  // Phase 2: Mutual repulsion — ensure semantic hues don't crowd each other
+  // Iterate a few times to let repulsion settle
+  for (let iteration = 0; iteration < 3; iteration++) {
+    for (let i = 0; i < semanticRoles.length; i++) {
+      for (let j = i + 1; j < semanticRoles.length; j++) {
+        const roleA = semanticRoles[i];
+        const roleB = semanticRoles[j];
+        const dist = angularDistance(adjusted[roleA], adjusted[roleB]);
+
+        if (dist < MIN_SEMANTIC_DISTANCE) {
+          const rangeA = HUE_RANGES[roleA];
+          const rangeB = HUE_RANGES[roleB];
+          // Push each hue away from the other, respecting ranges
+          const pushAmount = (MIN_SEMANTIC_DISTANCE - dist) / 2;
+          const dir = hueDirection(adjusted[roleB], adjusted[roleA]);
+          adjusted[roleA] = clampHue(adjusted[roleA] + pushAmount * dir, rangeA.min, rangeA.max);
+          adjusted[roleB] = clampHue(adjusted[roleB] - pushAmount * dir, rangeB.min, rangeB.max);
+        }
+      }
+    }
+  }
+
+  // Write final values
+  for (const role of semanticRoles) {
+    result[role] = adjusted[role];
   }
 
   // Neutral hue

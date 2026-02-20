@@ -1,4 +1,4 @@
-import type { GenerationResult, NamingConfig } from '@color-tool/core';
+import type { GenerationResult, NamingConfig, SemanticRole } from '@color-tool/core';
 import { exportCSS, exportHexTable, exportSVG, exportDTCG } from '@color-tool/core';
 import { Button } from '@/components/ui/button';
 import { Copy, Download, Image, Braces } from 'lucide-react';
@@ -10,16 +10,19 @@ interface SettingsSidebarProps {
   namingConfig: NamingConfig;
   onNamingConfigChange: (config: NamingConfig) => void;
   onGenerateBothThemes: () => { lightResult: GenerationResult; darkResult: GenerationResult };
+  secondaryActive: boolean;
 }
 
-export function SettingsSidebar({ result, onCopy, namingConfig, onNamingConfigChange, onGenerateBothThemes }: SettingsSidebarProps) {
+export function SettingsSidebar({ result, onCopy, namingConfig, onNamingConfigChange, onGenerateBothThemes, secondaryActive }: SettingsSidebarProps) {
+  const excludeRoles: SemanticRole[] | undefined = secondaryActive ? undefined : ['secondary'];
+
   const handleExportCSS = () => {
-    const css = exportCSS(result.palette, { naming: namingConfig }, result.alphaPalette);
+    const css = exportCSS(result.palette, { naming: namingConfig, excludeRoles }, result.alphaPalette);
     onCopy(css);
   };
 
   const handleExportHex = () => {
-    const table = exportHexTable(result.palette);
+    const table = exportHexTable(result.palette, excludeRoles);
     const blob = new Blob([table], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -35,6 +38,7 @@ export function SettingsSidebar({ result, onCopy, namingConfig, onNamingConfigCh
       light: { palette: lightResult.palette, alphaPalette: lightResult.alphaPalette },
       dark: { palette: darkResult.palette, alphaPalette: darkResult.alphaPalette },
       naming: namingConfig,
+      excludeRoles,
     });
     onCopy(svg);
   };
@@ -45,6 +49,7 @@ export function SettingsSidebar({ result, onCopy, namingConfig, onNamingConfigCh
       light: { palette: lightResult.palette, oklchPalette: lightResult.oklchPalette, alphaPalette: lightResult.alphaPalette },
       dark: { palette: darkResult.palette, oklchPalette: darkResult.oklchPalette, alphaPalette: darkResult.alphaPalette },
       naming: namingConfig,
+      excludeRoles,
     });
     onCopy(dtcg);
   };

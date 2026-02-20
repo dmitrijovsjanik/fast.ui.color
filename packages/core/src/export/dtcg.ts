@@ -1,10 +1,11 @@
-import type { Palette, AlphaPalette, OklchPalette, NamingConfig } from '../types';
+import type { Palette, AlphaPalette, OklchPalette, NamingConfig, SemanticRole } from '../types';
 import { SEMANTIC_ROLES, STEP_INDICES } from '../types';
 
 export interface DTCGExportInput {
   light: { palette: Palette; oklchPalette: OklchPalette; alphaPalette?: AlphaPalette };
   dark: { palette: Palette; oklchPalette: OklchPalette; alphaPalette?: AlphaPalette };
   naming: NamingConfig;
+  excludeRoles?: SemanticRole[];
 }
 
 function hexToComponents(hex: string): [number, number, number] {
@@ -19,7 +20,10 @@ function round(n: number): number {
 }
 
 export function exportDTCG(input: DTCGExportInput): string {
-  const { naming } = input;
+  const { naming, excludeRoles } = input;
+  const roles = excludeRoles
+    ? SEMANTIC_ROLES.filter(r => !excludeRoles.includes(r))
+    : SEMANTIC_ROLES;
   const tokens: Record<string, unknown> = {};
 
   for (const theme of ['light', 'dark'] as const) {
@@ -30,7 +34,7 @@ export function exportDTCG(input: DTCGExportInput): string {
       $description: `${themeName} theme color tokens`,
     };
 
-    for (const role of SEMANTIC_ROLES) {
+    for (const role of roles) {
       const roleName = naming.roleNames[role];
       const solidName = naming.modeNames.solid;
       const alphaName = naming.modeNames.alpha;

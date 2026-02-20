@@ -1,9 +1,10 @@
-import type { Palette, AlphaPalette, NamingConfig } from '../types';
+import type { Palette, AlphaPalette, NamingConfig, SemanticRole } from '../types';
 import { SEMANTIC_ROLES, STEP_INDICES } from '../types';
 
 export interface CSSExportOptions {
   naming?: NamingConfig;
   prefix?: string;
+  excludeRoles?: SemanticRole[];
 }
 
 export function exportCSS(
@@ -11,10 +12,13 @@ export function exportCSS(
   options: CSSExportOptions = {},
   alphaPalette?: AlphaPalette
 ): string {
-  const { naming, prefix = '' } = options;
+  const { naming, prefix = '', excludeRoles } = options;
+  const roles = excludeRoles
+    ? SEMANTIC_ROLES.filter(r => !excludeRoles.includes(r))
+    : SEMANTIC_ROLES;
   const lines: string[] = [':root {'];
 
-  for (const role of SEMANTIC_ROLES) {
+  for (const role of roles) {
     const scale = palette[role];
     const roleName = naming ? naming.roleNames[role] : role;
     const solidMode = naming ? naming.modeNames.solid : '';

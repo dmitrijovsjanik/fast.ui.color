@@ -156,12 +156,12 @@ export function NamingTemplateBuilder({ config, onChange }: NamingTemplateBuilde
                 onDragOver={(e) => handleDragOver(e, i)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, i)}
-                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium cursor-grab active:cursor-grabbing select-none transition-all ${
+                className={`inline-flex items-center gap-1 rounded pr-2 pl-0.5 py-0.5 text-xs font-medium cursor-grab active:cursor-grabbing select-none transition-all ${
                   dropTarget === i
-                    ? 'bg-primary/20 text-primary ring-2 ring-primary/30'
+                    ? 'bg-accent text-accent-foreground ring-2 ring-ring/30'
                     : dragIndex === i
-                      ? 'bg-primary/5 text-primary/50'
-                      : 'bg-primary/10 text-primary'
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-accent text-accent-foreground'
                 }`}
               >
                 <GripVertical className="h-3 w-3 opacity-40" />

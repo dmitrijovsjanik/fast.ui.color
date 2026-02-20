@@ -2,22 +2,35 @@ import type { GenerationConfig, OklchColor, SemanticHues, SemanticRole } from '.
 import { maxChromaForLH } from './gamut-mapper';
 import { computeStep9Lightness } from './scale-generator';
 
+// Angular distance on the hue circle (0-180)
+function angularDistance(h1: number, h2: number): number {
+  const diff = Math.abs(h1 - h2) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+
 // Estimate the actual step 9 lightness for a semantic role,
 // accounting for: (1) per-hue optimal L (bright hues like teal/amber get boosted)
-// and (2) brand lightness shift (semantics blend 35% toward brand L).
+// and (2) adaptive brand lightness shift based on hue proximity.
 function estimateSemanticStep9L(
   hue: number,
+  brandHue: number,
   brandStep9L: number,
   gamut: 'sRGB' | 'P3'
 ): number {
   let baseL = computeStep9Lightness(hue, gamut);
 
-  const blendFactor = 0.35;
+  // Adaptive blend: closer hues blend more toward brand lightness (stronger coherence)
+  const hueDistance = angularDistance(hue, brandHue);
+  // blendFactor: 0.5 for same hue, 0.2 for opposite (180°), smooth interpolation
+  const blendFactor = 0.2 + 0.3 * (1 - hueDistance / 180);
+
   baseL = baseL + (brandStep9L - baseL) * blendFactor;
   return Math.max(0.45, Math.min(0.90, baseL));
 }
 
-// Resolve peak chroma for each semantic role based on config
+// Resolve peak chroma for each semantic role based on config.
+// Applies chroma coherence: semantic chromas are capped relative to brand
+// so that no role visually outshouts the brand color.
 export function resolveChromaStrategy(
   config: GenerationConfig,
   brandOklch: OklchColor,
@@ -28,7 +41,7 @@ export function resolveChromaStrategy(
   const { brandMode, chromaEqualization, neutralStyle } = config;
   const isSecondaryCustom = config.secondary?.mode === 'custom' && secondaryOklch;
 
-  const neutralChroma = neutralStyle === 'tinted' ? 0.011 : 0;
+  const neutralChroma = neutralStyle === 'tinted' ? 0.007 : 0;
 
   // Brand step 9 L depends on brandMode:
   // fixed = exact user input L, auto = computed algorithmically
@@ -36,20 +49,29 @@ export function resolveChromaStrategy(
     ? brandOklch.l
     : computeStep9Lightness(hues.brand, gamut);
 
-  // Per-role step 9 L (hue-aware + brand-blended)
+  // Brand chroma — the reference for coherence
+  const brandChroma = brandMode === 'fixed'
+    ? brandOklch.c
+    : maxChromaForLH(brandStep9L, hues.brand, gamut);
+
+  // Chroma coherence ceiling: semantic roles can be at most 1.15x brand chroma.
+  // This keeps the palette feeling unified — no role wildly outsaturates the brand.
+  const chromaCeiling = brandChroma * 1.15;
+
+  // Per-role step 9 L (hue-aware + brand-blended with adaptive factor)
   const roleLightness: Record<Exclude<SemanticRole, 'neutral'>, number> = {
     brand: brandStep9L,
     secondary: isSecondaryCustom
       ? secondaryOklch.l
-      : estimateSemanticStep9L(hues.secondary, brandStep9L, gamut),
-    success: estimateSemanticStep9L(hues.success, brandStep9L, gamut),
-    warning: estimateSemanticStep9L(hues.warning, brandStep9L, gamut),
-    danger: estimateSemanticStep9L(hues.danger, brandStep9L, gamut),
-    info: estimateSemanticStep9L(hues.info, brandStep9L, gamut),
+      : estimateSemanticStep9L(hues.secondary, hues.brand, brandStep9L, gamut),
+    success: estimateSemanticStep9L(hues.success, hues.brand, brandStep9L, gamut),
+    warning: estimateSemanticStep9L(hues.warning, hues.brand, brandStep9L, gamut),
+    danger: estimateSemanticStep9L(hues.danger, hues.brand, brandStep9L, gamut),
+    info: estimateSemanticStep9L(hues.info, hues.brand, brandStep9L, gamut),
   };
 
   // Compute max chroma for each role at its lightness
-  const maxChromas: Record<Exclude<SemanticRole, 'neutral'>, number> = {
+  const gamutMax: Record<Exclude<SemanticRole, 'neutral'>, number> = {
     brand: brandMode === 'fixed' ? brandOklch.c : maxChromaForLH(brandStep9L, hues.brand, gamut),
     secondary: isSecondaryCustom
       ? secondaryOklch.c
@@ -60,13 +82,24 @@ export function resolveChromaStrategy(
     info: maxChromaForLH(roleLightness.info, hues.info, gamut),
   };
 
+  // Apply chroma coherence — cap semantic roles to chromaCeiling
+  const semanticKeys: (keyof typeof gamutMax)[] = ['success', 'warning', 'danger', 'info'];
+  const coherentChromas: Record<Exclude<SemanticRole, 'neutral'>, number> = { ...gamutMax };
+  for (const key of semanticKeys) {
+    coherentChromas[key] = Math.min(gamutMax[key], chromaCeiling);
+  }
+  // Secondary gets a slightly looser ceiling (1.25x) since it's a brand companion
+  if (!isSecondaryCustom) {
+    coherentChromas.secondary = Math.min(gamutMax.secondary, brandChroma * 1.25);
+  }
+
   // Apply equalization if requested
   if (chromaEqualization === 'equal') {
-    const allValues = Object.values(maxChromas);
+    const allValues = semanticKeys.map(k => coherentChromas[k]);
     const minChroma = Math.min(...allValues);
     return {
-      brand: minChroma,
-      secondary: minChroma,
+      brand: coherentChromas.brand,
+      secondary: coherentChromas.secondary,
       success: minChroma,
       warning: minChroma,
       danger: minChroma,
@@ -75,14 +108,14 @@ export function resolveChromaStrategy(
     };
   }
 
-  // Independent — each role gets its own max chroma
+  // Independent — each role gets its coherent chroma
   return {
-    brand: maxChromas.brand,
-    secondary: maxChromas.secondary,
-    success: maxChromas.success,
-    warning: maxChromas.warning,
-    danger: maxChromas.danger,
-    info: maxChromas.info,
+    brand: coherentChromas.brand,
+    secondary: coherentChromas.secondary,
+    success: coherentChromas.success,
+    warning: coherentChromas.warning,
+    danger: coherentChromas.danger,
+    info: coherentChromas.info,
     neutral: neutralChroma,
   };
 }

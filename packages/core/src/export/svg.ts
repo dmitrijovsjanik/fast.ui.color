@@ -1,10 +1,11 @@
-import type { Palette, AlphaPalette, NamingConfig } from '../types';
+import type { Palette, AlphaPalette, NamingConfig, SemanticRole } from '../types';
 import { SEMANTIC_ROLES, STEP_INDICES, resolveTokenName } from '../types';
 
 export interface SVGExportInput {
   light: { palette: Palette; alphaPalette?: AlphaPalette };
   dark: { palette: Palette; alphaPalette?: AlphaPalette };
   naming: NamingConfig;
+  excludeRoles?: SemanticRole[];
 }
 
 // Layout constants
@@ -21,7 +22,6 @@ const PADDING = 16;
 const CELL_W = SWATCH_W + GAP;
 const CELL_H = SWATCH_H + LABEL_H + GAP;
 const GRID_W = ROLE_LABEL_W + 12 * CELL_W;
-const GRID_H = SECTION_TITLE_H + STEP_HEADER_H + SEMANTIC_ROLES.length * CELL_H;
 
 function escapeXml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -34,10 +34,11 @@ interface SectionDef {
   alphaPalette?: AlphaPalette;
   offsetX: number;
   offsetY: number;
+  roles: SemanticRole[];
 }
 
 function renderSection(lines: string[], section: SectionDef, naming: NamingConfig): void {
-  const { theme, mode, palette, alphaPalette, offsetX, offsetY } = section;
+  const { theme, mode, palette, alphaPalette, offsetX, offsetY, roles } = section;
   const isAlpha = mode === 'alpha';
   const bgColor = theme === 'light' ? '#ffffff' : '#111113';
 
@@ -59,12 +60,12 @@ function renderSection(lines: string[], section: SectionDef, naming: NamingConfi
 
   // Background rect for alpha section (so alpha composites visually correctly)
   if (isAlpha) {
-    lines.push(`<rect x="${ROLE_LABEL_W}" y="${rowsY}" width="${12 * CELL_W}" height="${SEMANTIC_ROLES.length * CELL_H}" fill="${bgColor}" rx="4" />`);
+    lines.push(`<rect x="${ROLE_LABEL_W}" y="${rowsY}" width="${12 * CELL_W}" height="${roles.length * CELL_H}" fill="${bgColor}" rx="4" />`);
   }
 
   // Rows
-  for (let r = 0; r < SEMANTIC_ROLES.length; r++) {
-    const role = SEMANTIC_ROLES[r];
+  for (let r = 0; r < roles.length; r++) {
+    const role = roles[r];
     const ry = rowsY + r * CELL_H;
 
     // Role label
@@ -96,6 +97,11 @@ function renderSection(lines: string[], section: SectionDef, naming: NamingConfi
 }
 
 export function exportSVG(input: SVGExportInput): string {
+  const roles = input.excludeRoles
+    ? SEMANTIC_ROLES.filter(r => !input.excludeRoles!.includes(r))
+    : SEMANTIC_ROLES;
+  const GRID_H = SECTION_TITLE_H + STEP_HEADER_H + roles.length * CELL_H;
+
   const totalW = PADDING + GRID_W + SECTION_GAP + GRID_W + PADDING;
   const totalH = PADDING + GRID_H + SECTION_GAP + GRID_H + PADDING;
 
@@ -105,10 +111,10 @@ export function exportSVG(input: SVGExportInput): string {
   const bottomY = PADDING + GRID_H + SECTION_GAP;
 
   const sections: SectionDef[] = [
-    { theme: 'light', mode: 'solid', palette: input.light.palette, alphaPalette: input.light.alphaPalette, offsetX: leftX, offsetY: topY },
-    { theme: 'light', mode: 'alpha', palette: input.light.palette, alphaPalette: input.light.alphaPalette, offsetX: rightX, offsetY: topY },
-    { theme: 'dark', mode: 'solid', palette: input.dark.palette, alphaPalette: input.dark.alphaPalette, offsetX: leftX, offsetY: bottomY },
-    { theme: 'dark', mode: 'alpha', palette: input.dark.palette, alphaPalette: input.dark.alphaPalette, offsetX: rightX, offsetY: bottomY },
+    { theme: 'light', mode: 'solid', palette: input.light.palette, alphaPalette: input.light.alphaPalette, offsetX: leftX, offsetY: topY, roles },
+    { theme: 'light', mode: 'alpha', palette: input.light.palette, alphaPalette: input.light.alphaPalette, offsetX: rightX, offsetY: topY, roles },
+    { theme: 'dark', mode: 'solid', palette: input.dark.palette, alphaPalette: input.dark.alphaPalette, offsetX: leftX, offsetY: bottomY, roles },
+    { theme: 'dark', mode: 'alpha', palette: input.dark.palette, alphaPalette: input.dark.alphaPalette, offsetX: rightX, offsetY: bottomY, roles },
   ];
 
   const lines: string[] = [];
