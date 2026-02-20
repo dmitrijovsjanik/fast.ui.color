@@ -1,7 +1,8 @@
-import type { GenerationConfig, SecondaryConfig, SecondaryMode, HarmonyType, HarmonyVariation, NeutralStyle, BrandMode, ChromaEqualization, LightnessMapping, ThemeMode } from '@color-tool/core';
+import type { GenerationConfig, SecondaryConfig, SecondaryMode, HarmonyType, HarmonyVariation, ThemeMode } from '@color-tool/core';
 import { getHarmonyVariations, getHarmonyLabel } from '@color-tool/core';
 import { ColorInput } from './ColorInput';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface BrandInputProps {
@@ -142,100 +143,99 @@ export function BrandInput({
       {/* Generation settings */}
       {config && onConfigChange && (
         <div className="mt-5 pt-5 border-t border-border">
-          <div className="flex flex-wrap items-start gap-6">
-            <div className="flex flex-col gap-2">
-              <Label className="text-xs text-muted-foreground">Neutral</Label>
-              <ToggleGroup
-                type="single"
-                size="sm"
-                value={config.neutralStyle}
-                onValueChange={(v) => v && onConfigChange({ neutralStyle: v as NeutralStyle })}
-              >
-                <ToggleGroupItem value="tinted">Tinted</ToggleGroupItem>
-                <ToggleGroupItem value="pure-gray">Pure Gray</ToggleGroupItem>
-              </ToggleGroup>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="tinted-neutral"
+                checked={config.neutralStyle === 'tinted'}
+                onCheckedChange={(checked) => onConfigChange({ neutralStyle: checked ? 'tinted' : 'pure-gray' })}
+              />
+              <Label htmlFor="tinted-neutral" className="text-xs text-muted-foreground cursor-pointer">
+                Tinted Neutral
+              </Label>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label className="text-xs text-muted-foreground">Brand Step 9</Label>
-              <ToggleGroup
-                type="single"
-                size="sm"
-                value={config.brandMode}
-                onValueChange={(v) => v && onConfigChange({ brandMode: v as BrandMode })}
-              >
-                <ToggleGroupItem value="auto">Auto</ToggleGroupItem>
-                <ToggleGroupItem value="fixed">Fixed</ToggleGroupItem>
-              </ToggleGroup>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="fixed-brand"
+                checked={config.brandMode === 'fixed'}
+                onCheckedChange={(checked) => onConfigChange({ brandMode: checked ? 'fixed' : 'auto' })}
+              />
+              <Label htmlFor="fixed-brand" className="text-xs text-muted-foreground cursor-pointer">
+                Fixed Brand
+              </Label>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label className="text-xs text-muted-foreground">Chroma</Label>
-              <ToggleGroup
-                type="single"
-                size="sm"
-                value={config.chromaEqualization}
-                onValueChange={(v) => v && onConfigChange({ chromaEqualization: v as ChromaEqualization })}
-              >
-                <ToggleGroupItem value="independent">Independent</ToggleGroupItem>
-                <ToggleGroupItem value="equal">Equal</ToggleGroupItem>
-              </ToggleGroup>
+            {config.brandMode === 'fixed' && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="fixed-dark-brand"
+                  checked={config.darkBrandAdaptation === 'fixed'}
+                  onCheckedChange={(checked) => onConfigChange({ darkBrandAdaptation: checked ? 'fixed' : 'adaptive' })}
+                />
+                <Label htmlFor="fixed-dark-brand" className="text-xs text-muted-foreground cursor-pointer">
+                  Fixed Dark Brand
+                </Label>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="equal-chroma"
+                checked={config.chromaEqualization === 'equal'}
+                onCheckedChange={(checked) => onConfigChange({ chromaEqualization: checked ? 'equal' : 'independent' })}
+              />
+              <Label htmlFor="equal-chroma" className="text-xs text-muted-foreground cursor-pointer">
+                Equal Chroma
+              </Label>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label className="text-xs text-muted-foreground">Gamut</Label>
-              <ToggleGroup
-                type="single"
-                size="sm"
-                value={config.gamut}
-                onValueChange={(v) => v && onConfigChange({ gamut: v as 'sRGB' | 'P3' })}
-              >
-                <ToggleGroupItem value="sRGB">sRGB</ToggleGroupItem>
-                <ToggleGroupItem value="P3">P3</ToggleGroupItem>
-              </ToggleGroup>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="p3-gamut"
+                checked={config.gamut === 'P3'}
+                onCheckedChange={(checked) => onConfigChange({ gamut: checked ? 'P3' : 'sRGB' })}
+              />
+              <Label htmlFor="p3-gamut" className="text-xs text-muted-foreground cursor-pointer">
+                P3 Gamut
+              </Label>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label className="text-xs text-muted-foreground">Lightness</Label>
-              <ToggleGroup
-                type="single"
-                size="sm"
-                value={config.lightnessMapping}
-                onValueChange={(v) => v && onConfigChange({ lightnessMapping: v as LightnessMapping })}
-              >
-                <ToggleGroupItem value="fixed">Fixed</ToggleGroupItem>
-                <ToggleGroupItem value="interpolated">Adaptive</ToggleGroupItem>
-              </ToggleGroup>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="adaptive-lightness"
+                checked={config.lightnessMapping === 'interpolated'}
+                onCheckedChange={(checked) => onConfigChange({ lightnessMapping: checked ? 'interpolated' : 'fixed' })}
+              />
+              <Label htmlFor="adaptive-lightness" className="text-xs text-muted-foreground cursor-pointer">
+                Adaptive Lightness
+              </Label>
             </div>
 
-            {/* Palette display — right-aligned */}
-            <div className="flex items-end gap-3 ml-auto">
+            {/* Display & Theme — right-aligned */}
+            <div className="flex items-center gap-6 ml-auto">
               {displayMode && onDisplayModeChange && (
-                <div className="flex flex-col gap-2">
-                  <Label className="text-xs text-muted-foreground">Display</Label>
-                  <ToggleGroup
-                    type="single"
-                    size="sm"
-                    value={displayMode}
-                    onValueChange={(v) => v && onDisplayModeChange(v as 'semantic' | 'fill')}
-                  >
-                    <ToggleGroupItem value="semantic">Semantic</ToggleGroupItem>
-                    <ToggleGroupItem value="fill">Fill</ToggleGroupItem>
-                  </ToggleGroup>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="fill-display"
+                    checked={displayMode === 'fill'}
+                    onCheckedChange={(checked) => onDisplayModeChange(checked ? 'fill' : 'semantic')}
+                  />
+                  <Label htmlFor="fill-display" className="text-xs text-muted-foreground cursor-pointer">
+                    Fill Display
+                  </Label>
                 </div>
               )}
               {theme && onThemeToggle && (
-                <div className="flex flex-col gap-2">
-                  <Label className="text-xs text-muted-foreground">Theme</Label>
-                  <ToggleGroup
-                    type="single"
-                    size="sm"
-                    value={theme}
-                    onValueChange={(v) => v && v !== theme && onThemeToggle()}
-                  >
-                    <ToggleGroupItem value="light">Light</ToggleGroupItem>
-                    <ToggleGroupItem value="dark">Dark</ToggleGroupItem>
-                  </ToggleGroup>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="dark-theme"
+                    checked={theme === 'dark'}
+                    onCheckedChange={() => onThemeToggle()}
+                  />
+                  <Label htmlFor="dark-theme" className="text-xs text-muted-foreground cursor-pointer">
+                    Dark Theme
+                  </Label>
                 </div>
               )}
             </div>
