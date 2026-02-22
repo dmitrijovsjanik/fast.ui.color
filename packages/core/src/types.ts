@@ -47,6 +47,15 @@ export interface SecondaryConfig {
   customColor?: HexColor;
 }
 
+// Semantic harmony — pull status hues toward harmonic anchors
+export type SemanticHarmonyMode = 'off' | 'auto';
+
+export interface SemanticHarmonyConfig {
+  mode: SemanticHarmonyMode;
+  harmonyType: HarmonyType;
+  strength: number; // 0-1
+}
+
 // Full palette
 export type Palette = Record<SemanticRole, ColorScale>;
 export type OklchPalette = Record<SemanticRole, OklchScale>;
@@ -122,6 +131,9 @@ export interface GenerationConfig {
   backgroundColor?: HexColor; // for alpha color computation
   darkBrandAdaptation: DarkBrandAdaptation; // how fixed brand adapts in dark theme
   secondary?: SecondaryConfig;
+  semanticHarmony?: SemanticHarmonyConfig;
+  stepPositions?: Record<number, number>; // Custom step 1-8 position fractions (overrides defaults)
+  equalizeLightness?: boolean; // Force all roles to use same lightness per step (brand's L)
 }
 
 // Semantic hues result

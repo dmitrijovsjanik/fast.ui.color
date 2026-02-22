@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
-import { generatePalette, checkAPCAContrast, DEFAULT_NAMING_CONFIG, type GenerationConfig, type GenerationResult, type NamingConfig, type SecondaryConfig } from '@color-tool/core';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { generatePalette, checkAPCAContrast, checkBackgroundCompression, hexToOklch, DEFAULT_NAMING_CONFIG, DARK_STEP_POSITIONS, LIGHT_STEP_POSITIONS, computeHarmonicAnchors, type GenerationConfig, type GenerationResult, type NamingConfig, type SecondaryConfig } from '@color-tool/core';
 import { Header } from './components/Header';
 import { BrandInput } from './components/BrandInput';
 import { PaletteMatrix } from './components/PaletteMatrix';
 import { IttenWheel } from './components/IttenWheel';
+import { GamutCharts } from './components/GamutCharts';
 import { ComponentShowcase } from './components/ComponentShowcase';
 import { SettingsSidebar } from './components/SettingsSidebar';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const LIGHT_BG = '#ffffff';
-const DARK_BG = '#111113';
+const DARK_BG = '#111111';
 const PAGE_BG_DARK = '#000000';
 const PAGE_BG_LIGHT = '#ffffff';
 
@@ -27,6 +28,11 @@ const DEFAULT_CONFIG: GenerationConfig = {
     harmonyType: 'complementary',
     harmonyVariation: 'positive',
   },
+  semanticHarmony: {
+    mode: 'off',
+    harmonyType: 'triadic',
+    strength: 0.5,
+  },
 };
 
 export function App() {
@@ -37,13 +43,64 @@ export function App() {
   const [displayMode, setDisplayMode] = useState<'semantic' | 'fill'>('semantic');
   const [colorFormat, setColorFormat] = useState<'alpha' | 'solid'>('alpha');
   const [vizTab, setVizTab] = useState<'hue-map' | 'showcase'>('hue-map');
+
+  const harmonicAnchors = useMemo(() => {
+    const sh = config.semanticHarmony;
+    if (!sh || sh.mode === 'off' || !result) return undefined;
+    return computeHarmonicAnchors(result.semanticHues.brand, sh.harmonyType);
+  }, [config.semanticHarmony, result]);
+
+  // Step position fractions — default from theme
+  const defaultPositions = useMemo(() =>
+    config.theme === 'dark' ? { ...DARK_STEP_POSITIONS } : { ...LIGHT_STEP_POSITIONS },
+    [config.theme]
+  );
+  const stepPositions = config.stepPositions ?? defaultPositions;
+
+  const handleStepPositionChange = useCallback((step: number, value: number) => {
+    setConfig(prev => {
+      const base = prev.stepPositions ?? (prev.theme === 'dark' ? { ...DARK_STEP_POSITIONS } : { ...LIGHT_STEP_POSITIONS });
+      // Clamp between neighbors to maintain monotonic order
+      const min = step > 1 ? (base[step - 1] ?? 0) + 0.001 : 0;
+      const max = step < 8 ? (base[step + 1] ?? 1) - 0.001 : 0.999;
+      const clamped = Math.max(min, Math.min(max, value));
+      return { ...prev, stepPositions: { ...base, [step]: clamped } };
+    });
+  }, []);
+
+  const handleResetStepPosition = useCallback((step: number) => {
+    setConfig(prev => {
+      const defaults = prev.theme === 'dark' ? DARK_STEP_POSITIONS : LIGHT_STEP_POSITIONS;
+      if (!prev.stepPositions) return prev;
+      const updated = { ...prev.stepPositions, [step]: defaults[step] };
+      // If all match defaults, clear custom positions
+      const allDefault = Object.keys(defaults).every(k => Math.abs(updated[+k] - defaults[+k]) < 0.0001);
+      return { ...prev, stepPositions: allDefault ? undefined : updated };
+    });
+  }, []);
+
+  const handleResetAllStepPositions = useCallback(() => {
+    setConfig(prev => ({ ...prev, stepPositions: undefined }));
+  }, []);
+
+  // Reset step positions when theme changes
+  useEffect(() => {
+    setConfig(prev => ({ ...prev, stepPositions: undefined }));
+  }, [config.theme]);
+
   // Sync dark class on <html>
   useEffect(() => {
     document.documentElement.classList.toggle('dark', config.theme === 'dark');
   }, [config.theme]);
 
-  // Generate palette whenever config changes
+  // Check if bg is too bright for the current theme
+  const bgCompressed = config.backgroundColor
+    ? checkBackgroundCompression(hexToOklch(config.backgroundColor).l, config.theme).compressed
+    : false;
+
+  // Generate palette whenever config changes (skip if bg too bright)
   useEffect(() => {
+    if (bgCompressed) return;
     const timer = setTimeout(() => {
       try {
         const r = generatePalette(config);
@@ -53,7 +110,7 @@ export function App() {
       }
     }, 50);
     return () => clearTimeout(timer);
-  }, [config]);
+  }, [config, bgCompressed]);
 
   // Sync generated palette → shadcn CSS custom properties
   useEffect(() => {
@@ -126,10 +183,13 @@ export function App() {
   }, []);
 
   const handleSecondaryConfigChange = useCallback((partial: Partial<SecondaryConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      secondary: { ...prev.secondary!, ...partial },
-    }));
+    setConfig(prev => {
+      const merged = { ...prev.secondary!, ...partial };
+      if (partial.mode === 'custom' && !merged.customColor) {
+        merged.customColor = '#E52563';
+      }
+      return { ...prev, secondary: merged };
+    });
   }, []);
 
   const generateBothThemes = useCallback(() => {
@@ -154,6 +214,7 @@ export function App() {
           backgroundColor={config.backgroundColor}
           defaultBackgroundColor={config.theme === 'dark' ? DARK_BG : LIGHT_BG}
           onBackgroundChange={handleBackgroundChange}
+          bgCompressed={bgCompressed}
           secondaryConfig={config.secondary}
           secondaryColor={result?.palette.secondary[9]}
           onSecondaryColorChange={handleSecondaryColorChange}
@@ -177,6 +238,11 @@ export function App() {
               secondaryActive={config.secondary?.mode !== 'off'}
               displayMode={displayMode}
               colorFormat={colorFormat}
+              stepPositions={stepPositions}
+              defaultStepPositions={defaultPositions}
+              onStepPositionChange={handleStepPositionChange}
+              onResetStepPosition={handleResetStepPosition}
+              onResetAllStepPositions={handleResetAllStepPositions}
             />
             <div className="rounded-xl bg-card p-6 mb-6">
               <ToggleGroup
@@ -189,11 +255,27 @@ export function App() {
                 <ToggleGroupItem value="showcase">Showcase</ToggleGroupItem>
               </ToggleGroup>
               {vizTab === 'hue-map' && (
-                <IttenWheel
-                  semanticHues={result.semanticHues}
-                  palette={result.palette}
-                  secondaryActive={config.secondary?.mode !== 'off'}
-                />
+                <div className="flex items-start gap-4 mt-4">
+                  <div className="shrink-0">
+                    <IttenWheel
+                      semanticHues={result.semanticHues}
+                      palette={result.palette}
+                      secondaryActive={config.secondary?.mode !== 'off'}
+                      harmonicAnchors={harmonicAnchors}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <GamutCharts
+                      oklchPalette={result.oklchPalette}
+                      palette={result.palette}
+                      semanticHues={result.semanticHues}
+                      gamut={config.gamut}
+                      secondaryActive={config.secondary?.mode !== 'off'}
+                      equalizeChroma={config.chromaEqualization === 'equal'}
+                      equalizeLightness={config.equalizeLightness}
+                    />
+                  </div>
+                </div>
               )}
               {vizTab === 'showcase' && (
                 <ComponentShowcase palette={result.palette} alphaPalette={result.alphaPalette} />

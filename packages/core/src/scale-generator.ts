@@ -1,244 +1,136 @@
 import type { OklchColor, OklchScale, StepIndex, ColorScale } from './types';
 import { STEP_INDICES } from './types';
 import { gamutMapOklch, maxChromaForLH } from './gamut-mapper';
-import { apcaLcFromY, reverseAPCA_OklchL } from './contrast-checker';
 
-// --- Hybrid Lightness Generation ---
+// --- Unified Lightness Generation ---
 //
-// Two strategies depending on whether APCA contrast is measurable:
+// All steps 1-12 (except fixed 9-10) use a single principle:
 //
-// Steps 1-4 (surfaces): Bezier transposition from reference scale.
-//   These live in APCA's dead zone (Lc=0 vs bg) so contrast-targeting is impossible.
-//   Instead, generate at reference bg then transpose with steep bezier falloff.
-//   Step 1 absorbs bg change, steps 2-4 shift slightly, preserving visual spacing.
-//
-// Steps 5-12 (interactive/borders/solid/text): Proportional APCA contrast.
-//   These have measurable contrast vs bg. Compute reference Lc at standard bg,
-//   then scale proportionally to available contrast at actual bg.
-//   APCA reverse-solve finds the L that achieves the target Lc.
-//   This preserves contrast ratios across different backgrounds.
+// 1. Each step is a fixed fraction of the [bg, step9] range.
+// 2. As bg moves toward step 9, all steps compress proportionally.
+// 3. Dark theme: decelerating curve (big jump 1→2, smaller gaps near step 9).
+//    Human vision needs larger L differences to distinguish dark surfaces.
+// 4. Light theme: accelerating curve (tiny gaps near white bg, big jumps near step 9).
+//    Human vision is very sensitive to subtle differences in light tones.
+// 5. Wall compression as safety net for steps 10-12.
 
-// Reference background lightness values
-const DARK_REFERENCE_BG_L = 0.178;  // ~#111113
-const LIGHT_REFERENCE_BG_L = 1.0;   // #ffffff
-
-// Surface zone power curve exponents — calibrated from Radix reference data.
-const DARK_SURFACE_GAMMA = 1.2;
-const LIGHT_SURFACE_GAMMA = 1.8;
-
-// Bezier falloff for surface transposition (steps 1-4 only).
-// From Radix's [1,0,1,0] cubic bezier evaluated at (1 - i/11).
-const SURFACE_TRANSPOSE_FALLOFF: Record<number, number> = {
-  1: 1.000,
-  2: 0.167,
-  3: 0.081,
-  4: 0.043,
+// Step positions: fraction of the [bg, step9] range in L³ space (≈ luminance).
+// Interpolating in L³ ensures equal perceived contrast at any background lightness.
+// 0.0 = at bg, 1.0 = at step 9.
+// Dark: decelerating curve — big initial jump from bg, finer gradations near step 9.
+export const DARK_STEP_POSITIONS: Record<number, number> = {
+  1: 0.02, 2: 0.03, 3: 0.08, 4: 0.12,
+  5: 0.16, 6: 0.30, 7: 0.40, 8: 0.50,
+};
+// Light: accelerating curve — subtle near bg (white), bigger jumps toward step 9.
+export const LIGHT_STEP_POSITIONS: Record<number, number> = {
+  1: 0.050, 2: 0.080, 3: 0.200, 4: 0.300,
+  5: 0.400, 6: 0.600, 7: 0.650, 8: 0.700,
 };
 
-// Adapt surface steps (1-4) from reference to actual background.
-// When bg is darker than reference: bezier transposition (Radix approach).
-// When bg is lighter than reference: recompute power curve from new bg.
-function adaptSurface(
+// Compute lightness for all 12 steps.
+//
+// Steps 1-8: interpolated in L³ space (≈ relative luminance Y) for
+// perceptually uniform contrast across different background lightness levels.
+// Weber's law: ΔY/Y = const → equal perceived contrast at any bg.
+// Steps 9-10: fixed (brand colors).
+// Steps 11-12: fixed (relative to step 9).
+function computeUnifiedSteps(
+  bgL: number,
   step9L: number,
-  targetBgL: number,
-  refBgL: number,
-  gamma: number,
+  step10L: number,
+  step11L: number,
+  step12L: number,
   isDark: boolean,
+  customPositions?: Record<number, number>,
 ): Record<number, number> {
-  const eps = 1e-4;
-  const bgDarker = isDark ? (targetBgL < refBgL - eps) : (targetBgL > refBgL + eps);
+  // Interpolate in L³ space (≈ luminance Y) for perceptually uniform steps.
+  // L³ approximates relative luminance; interpolating here means equal
+  // Weber contrast ratios regardless of background lightness.
+  const bgY = bgL * bgL * bgL;
+  const s9Y = step9L * step9L * step9L;
+  const rangeY = isDark ? (s9Y - bgY) : (bgY - s9Y);
 
-  // Both themes: bg = virtual step 0 (t=0), steps 1-4 use t = step/5.
-  // Step 1 is always distinct from bg.
-  // Light step 1 uses t=0.3 to reduce the gap between steps 1 and 2 (gamma=1.8 compresses early steps too much).
-  const computeSurface = (bgL: number, s9L: number) => {
-    const zb = (bgL + s9L) / 2;
-    const result: Record<number, number> = {};
-    for (let step = 1; step <= 4; step++) {
-      const t = (!isDark && step === 1) ? 0.3 : step / 5;
-      result[step] = isDark
-        ? bgL + Math.pow(t, gamma) * (zb - bgL)
-        : bgL - Math.pow(t, gamma) * (bgL - zb);
-    }
-    return result;
-  };
+  // Steps 1-8: proportional fractions in Y space, converted back to L
+  const positions = customPositions ?? (isDark ? DARK_STEP_POSITIONS : LIGHT_STEP_POSITIONS);
+  const result: Record<number, number> = {};
+  for (let step = 1; step <= 8; step++) {
+    const offsetY = positions[step] * rangeY;
+    const targetY = isDark ? bgY + offsetY : bgY - offsetY;
+    result[step] = Math.cbrt(Math.max(0, targetY));
+  }
 
-  if (bgDarker) {
-    // Bezier transposition: generate at ref bg, then shift toward actual bg.
-    // Use refBgL (not refSurface[1]) as base for diff so each step's offset from bg is preserved.
-    const refSurface = computeSurface(refBgL, step9L);
-    const bgShift = isDark ? (refBgL - targetBgL) : (targetBgL - refBgL);
-    const result: Record<number, number> = {};
-    for (let step = 1; step <= 4; step++) {
-      const shift = bgShift * SURFACE_TRANSPOSE_FALLOFF[step];
-      result[step] = Math.max(0, Math.min(1, isDark ? refSurface[step] - shift : refSurface[step] + shift));
+  // Fixed anchors
+  result[9] = step9L;
+  result[10] = step10L;
+  result[11] = step11L;
+  result[12] = step12L;
+
+  // Wall compression — when shifted steps overshoot fixed anchors
+  const MIN_GAP = 0.003;
+  if (isDark) {
+    for (let step = 8; step >= 1; step--) {
+      const upper = step === 8 ? result[9] : result[step + 1];
+      if (result[step] >= upper - MIN_GAP) {
+        result[step] = upper - MIN_GAP;
+      }
     }
-    // Ensure monotonicity
-    for (let step = 2; step <= 4; step++) {
-      if (isDark && result[step] <= result[step - 1]) result[step] = result[step - 1] + 0.003;
-      else if (!isDark && result[step] >= result[step - 1]) result[step] = result[step - 1] - 0.003;
-    }
-    return result;
+    if (result[11] <= result[10] + MIN_GAP) result[11] = result[10] + MIN_GAP;
+    if (result[12] <= result[11] + MIN_GAP) result[12] = result[11] + MIN_GAP;
   } else {
-    // Recompute power curve from new bg
-    return computeSurface(targetBgL, step9L);
-  }
-}
-
-// Compute contrast-preserving lightness for steps 5-12.
-// 1. Compute each step's APCA Lc at reference bg (absolute target)
-// 2. Reverse-solve to find L that achieves the SAME Lc at actual bg
-// This guarantees identical contrast regardless of background.
-function computeDarkContrastSteps(
-  bgL: number,
-  step9L: number,
-  step10L: number,
-  step11L: number,
-  step12L: number,
-): Record<number, number> {
-  const refBgL = DARK_REFERENCE_BG_L;
-  const refBgY = refBgL ** 3;
-
-  // Reference L for each step (at reference bg)
-  const refStepL: Record<number, number> = {};
-  const zoneBoundary = (refBgL + step9L) / 2;
-  // Step 5: power curve at ref bg (t = step/5, bg = virtual step 0)
-  const t5 = 5 / 5; // = 1.0, step 5 lands at zoneBoundary
-  refStepL[5] = refBgL + Math.pow(t5, DARK_SURFACE_GAMMA) * (zoneBoundary - refBgL);
-  // Steps 6-8: APCA fractions of step 9 at ref bg
-  const refStep9Lc = apcaLcFromY(step9L ** 3, refBgY);
-  const DARK_LC_FRACTIONS: Record<number, number> = { 6: 0.303, 7: 0.443, 8: 0.625 };
-  for (let step = 6; step <= 8; step++) {
-    const targetLc = refStep9Lc * DARK_LC_FRACTIONS[step];
-    if (targetLc >= 7) {
-      refStepL[step] = reverseAPCA_OklchL(targetLc, refBgL, 'reverse');
-    } else {
-      const t = (step - 5) / 4;
-      refStepL[step] = refStepL[5] + t * (step9L - refStepL[5]);
+    for (let step = 8; step >= 1; step--) {
+      const lower = step === 8 ? result[9] : result[step + 1];
+      if (result[step] <= lower + MIN_GAP) {
+        result[step] = lower + MIN_GAP;
+      }
     }
-  }
-  refStepL[9] = step9L;
-  refStepL[10] = step10L;
-  refStepL[11] = step11L;
-  refStepL[12] = step12L;
-
-  // Ensure monotonicity in reference
-  for (let step = 6; step <= 8; step++) {
-    if (refStepL[step] <= refStepL[step - 1]) {
-      refStepL[step] = refStepL[step - 1] + 0.005;
-    }
+    if (result[11] >= result[10] - MIN_GAP) result[11] = result[10] - MIN_GAP;
+    if (result[12] >= result[11] - MIN_GAP) result[12] = result[11] - MIN_GAP;
   }
 
-  // Compute absolute Lc targets (at reference bg)
-  const targetLcs: Record<number, number> = {};
-  for (let step = 5; step <= 12; step++) {
-    targetLcs[step] = apcaLcFromY(refStepL[step] ** 3, refBgY);
-  }
-
-  // Reverse-solve: find L at actual bg that produces the same Lc
-  const result: Record<number, number> = {};
-  for (let step = 5; step <= 12; step++) {
-    if (targetLcs[step] < 7) {
-      result[step] = refStepL[step]; // fallback to reference L
-    } else {
-      result[step] = reverseAPCA_OklchL(targetLcs[step], bgL, 'reverse');
-    }
-    result[step] = Math.max(0, Math.min(1, result[step]));
-  }
-
-  // Ensure monotonicity
-  for (let step = 6; step <= 12; step++) {
-    if (result[step] <= result[step - 1]) {
-      result[step] = result[step - 1] + 0.003;
-    }
+  // Clamp
+  const maxL = isDark ? 0.97 : 0.995;
+  for (let step = 1; step <= 12; step++) {
+    if (step === 9 || step === 10) continue;
+    result[step] = Math.max(0, Math.min(maxL, result[step]));
   }
 
   return result;
 }
 
-function computeLightContrastSteps(
+// Check if background causes step compression (steps overflowing into step 9).
+// Compares min delta at actual bg vs reference bg.
+export function checkBackgroundCompression(
   bgL: number,
-  step9L: number,
-  step10L: number,
-  step11L: number,
-  step12L: number,
-): Record<number, number> {
-  const refBgL = LIGHT_REFERENCE_BG_L;
-  const refBgY = refBgL ** 3;
+  theme: 'light' | 'dark',
+  step9L: number = LIGHT_STEP9_BASE_L,
+): { compressed: boolean } {
+  if (theme === 'light') return { compressed: false };
 
-  // Reference L at ref bg
-  const refStepL: Record<number, number> = {};
-  const zoneBoundary = (refBgL + step9L) / 2;
-  // Light theme: bg = virtual step 0, steps 1-5 use t = step/5
-  const t5 = 5 / 5; // = 1.0, step 5 lands at zoneBoundary
-  refStepL[5] = refBgL - Math.pow(t5, LIGHT_SURFACE_GAMMA) * (refBgL - zoneBoundary);
-  const refStep9Lc = apcaLcFromY(step9L ** 3, refBgY);
-  const LIGHT_LC_FRACTIONS: Record<number, number> = { 6: 0.406, 7: 0.567, 8: 0.774 };
-  for (let step = 6; step <= 8; step++) {
-    const targetLc = refStep9Lc * LIGHT_LC_FRACTIONS[step];
-    if (targetLc >= 7) {
-      refStepL[step] = reverseAPCA_OklchL(targetLc, refBgL, 'normal');
-    } else {
-      const t = (step - 5) / 4;
-      refStepL[step] = refStepL[5] - t * (refStepL[5] - step9L);
-    }
-  }
-  refStepL[9] = step9L;
-  refStepL[10] = step10L;
-  refStepL[11] = step11L;
-  refStepL[12] = step12L;
+  const step10L = step9L + 0.039;
+  const step11L = step9L + 0.115;
 
-  // Ensure monotonicity in reference (light: decreasing L)
-  for (let step = 6; step <= 8; step++) {
-    if (refStepL[step] >= refStepL[step - 1]) {
-      refStepL[step] = refStepL[step - 1] - 0.005;
-    }
+  const refSteps = computeUnifiedSteps(0, step9L, step10L, step11L, DARK_STEP12_L, true);
+  const actualSteps = computeUnifiedSteps(bgL, step9L, step10L, step11L, DARK_STEP12_L, true);
+
+  // Min delta between consecutive steps 5-9 at reference
+  let minRefDelta = 1;
+  for (let s = 5; s <= 8; s++) {
+    const d = refSteps[s + 1] - refSteps[s];
+    if (d < minRefDelta) minRefDelta = d;
   }
 
-  // Absolute Lc targets (at reference bg)
-  const targetLcs: Record<number, number> = {};
-  for (let step = 5; step <= 12; step++) {
-    targetLcs[step] = apcaLcFromY(refStepL[step] ** 3, refBgY);
+  // Min delta at actual bg
+  let minActualDelta = 1;
+  for (let s = 5; s <= 8; s++) {
+    const d = actualSteps[s + 1] - actualSteps[s];
+    if (d < minActualDelta) minActualDelta = d;
   }
 
-  // Reverse-solve: find L at actual bg that produces the same Lc
-  const result: Record<number, number> = {};
-  for (let step = 5; step <= 12; step++) {
-    if (targetLcs[step] < 7) {
-      result[step] = refStepL[step];
-    } else {
-      result[step] = reverseAPCA_OklchL(targetLcs[step], bgL, 'normal');
-    }
-    result[step] = Math.max(0, Math.min(1, result[step]));
-  }
-
-  // Ensure monotonicity (decreasing L)
-  for (let step = 6; step <= 12; step++) {
-    if (result[step] >= result[step - 1]) {
-      result[step] = result[step - 1] - 0.003;
-    }
-  }
-
-  return result;
+  return { compressed: minActualDelta < minRefDelta * 0.5 };
 }
 
-// Check if background is within viable range for dark theme.
-// Returns headroom (positive = OK, negative = out of range).
-export function checkDarkBackgroundViability(bgL: number): { viable: boolean; headroom: number } {
-  const bgY = bgL ** 3;
-  const maxLc = apcaLcFromY(1.0, bgY);
-  const headroom = maxLc - 91.5; // step 12 needs ~91.5 Lc
-  return { viable: headroom > 0, headroom };
-}
-
-export function checkLightBackgroundViability(bgL: number): { viable: boolean; headroom: number } {
-  const bgY = bgL ** 3;
-  const maxLc = apcaLcFromY(0, bgY); // black on bg
-  const headroom = maxLc - 91.5;
-  return { viable: headroom > 0, headroom };
-}
-
-// Reference lightness values (kept for step 9 base and step 12)
+// Reference lightness values
 const LIGHT_STEP9_BASE_L = 0.644;
 const LIGHT_STEP12_L = 0.329;
 const DARK_STEP12_L = 0.930;
@@ -350,6 +242,8 @@ export interface ScaleGeneratorOptions {
   brandLightness?: number; // Brand step 9 L — semantics shift toward it
   brandChromaCeiling?: number; // Max chroma from user's brand (dark adaptive mode)
   backgroundLightness?: number; // L of background color (both themes)
+  stepPositions?: Record<number, number>; // Custom step 1-8 position fractions
+  forcedStep9L?: number; // Override step 9 L (for equalize lightness mode)
 }
 
 // Generate a 12-step OKLCH scale for light theme
@@ -357,10 +251,10 @@ export function generateLightThemeScale(options: ScaleGeneratorOptions): {
   oklchScale: OklchScale;
   hexScale: ColorScale;
 } {
-  const { hue, peakChroma, gamut, fixedStep9, isNeutral = false, brandLightness, backgroundLightness } = options;
+  const { hue, peakChroma, gamut, fixedStep9, isNeutral = false, brandLightness, backgroundLightness, stepPositions, forcedStep9L } = options;
 
   // Background lightness — default to reference
-  const bgL = backgroundLightness ?? LIGHT_REFERENCE_BG_L;
+  const bgL = backgroundLightness ?? 1.0;
 
   const oklchScale = {} as OklchScale;
   const hexScale = {} as ColorScale;
@@ -369,7 +263,11 @@ export function generateLightThemeScale(options: ScaleGeneratorOptions): {
   let step9L: number;
   let step9C: number;
 
-  if (fixedStep9) {
+  if (forcedStep9L !== undefined && !fixedStep9) {
+    // Equalize lightness mode — use brand's step 9 L for all roles
+    step9L = forcedStep9L;
+    step9C = peakChroma;
+  } else if (fixedStep9) {
     step9L = fixedStep9.l;
     step9C = fixedStep9.c;
   } else {
@@ -397,17 +295,8 @@ export function generateLightThemeScale(options: ScaleGeneratorOptions): {
   const extraDrop = Math.max(0, step9L - LIGHT_STEP9_BASE_L) * 1.15;
   const step11L = step9L - baseStep11Drop - extraDrop;
 
-  // Steps 1-4: surface adaptation
-  const surfaceL = adaptSurface(step9L, bgL, LIGHT_REFERENCE_BG_L, LIGHT_SURFACE_GAMMA, false);
-
-  // Steps 5-12: proportional APCA contrast to actual bg
-  const contrastL = computeLightContrastSteps(bgL, step9L, step10L, step11L, LIGHT_STEP12_L);
-
-  // Merge: ensure step 5 < step 4 (light theme: decreasing L)
-  const finalL: Record<number, number> = { ...surfaceL, ...contrastL };
-  if (finalL[5] >= finalL[4]) {
-    finalL[5] = finalL[4] - 0.005;
-  }
+  // Unified step computation
+  const finalL = computeUnifiedSteps(bgL, step9L, step10L, step11L, LIGHT_STEP12_L, false, stepPositions);
 
   for (const step of STEP_INDICES) {
     const l = finalL[step];
@@ -425,26 +314,24 @@ export function generateLightThemeScale(options: ScaleGeneratorOptions): {
   return { oklchScale, hexScale };
 }
 
-// Dark mode chroma — Hunt effect compensation on steps 3-8.
-// Dark backgrounds reduce perceived saturation (Hunt 1952, CIECAM02 F_L factor).
-// Steps 1-2: already compensated (2x/1.33x of light).
-// Steps 3-8: boosted ~15-20% above light factors to restore perceptual parity.
-// Steps 9-10: Helmholtz-Kohlrausch compensation (-15%) — saturated colors
-//   appear brighter on dark backgrounds (up to 2.5x for blue hues).
-// Step 11-12: text colors, kept lower for readability.
+// Dark mode chroma — aligned with Radix Colors pattern.
+// Steps 3-6 have significantly higher chroma than light theme to compensate for
+// Hunt effect (dark backgrounds reduce perceived saturation) and provide
+// rich, saturated colors at surface/border steps.
+// Step 9: used directly from step9C, factor below is unused.
 const DARK_CHROMA_FACTORS: Record<StepIndex, number> = {
-  1: 0.04,
-  2: 0.08,
-  3: 0.22,
-  4: 0.32,
-  5: 0.40,
-  6: 0.50,
-  7: 0.62,
+  1: 0.10,
+  2: 0.16,
+  3: 0.35,
+  4: 0.48,
+  5: 0.55,
+  6: 0.58,
+  7: 0.63,
   8: 0.80,
   9: 0.85,
   10: 0.80,
   11: 0.65,
-  12: 0.26,
+  12: 0.24,
 };
 
 function darkChromaForStep(step: StepIndex, peakChroma: number): number {
@@ -456,19 +343,25 @@ export function generateDarkThemeScale(options: ScaleGeneratorOptions): {
   oklchScale: OklchScale;
   hexScale: ColorScale;
 } {
-  const { hue, peakChroma, gamut, fixedStep9, isNeutral = false, brandLightness, brandChromaCeiling, backgroundLightness } = options;
+  const { hue, peakChroma, gamut, fixedStep9, isNeutral = false, brandLightness, brandChromaCeiling, backgroundLightness, stepPositions, forcedStep9L } = options;
 
   const oklchScale = {} as OklchScale;
   const hexScale = {} as ColorScale;
 
   // Background lightness — default to reference
-  const bgL = backgroundLightness ?? DARK_REFERENCE_BG_L;
+  const bgL = backgroundLightness ?? 0.178;
 
   // Step 9 lightness: same logic as light (hue-dependent)
   let step9L: number;
   let step9C: number;
 
-  if (fixedStep9) {
+  if (forcedStep9L !== undefined && !fixedStep9) {
+    // Equalize lightness mode — use brand's step 9 L for all roles
+    step9L = forcedStep9L;
+    step9C = brandChromaCeiling !== undefined
+      ? Math.min(peakChroma, brandChromaCeiling * 0.85)
+      : peakChroma;
+  } else if (fixedStep9) {
     step9L = fixedStep9.l;
     step9C = fixedStep9.c;
   } else {
@@ -497,17 +390,8 @@ export function generateDarkThemeScale(options: ScaleGeneratorOptions): {
   const step10L = step9L + 0.039;
   const step11L = step9L + 0.115;
 
-  // Steps 1-4: surface adaptation
-  const surfaceL = adaptSurface(step9L, bgL, DARK_REFERENCE_BG_L, DARK_SURFACE_GAMMA, true);
-
-  // Steps 5-12: proportional APCA contrast to actual bg
-  const contrastL = computeDarkContrastSteps(bgL, step9L, step10L, step11L, DARK_STEP12_L);
-
-  // Merge: ensure step 5 > step 4
-  const finalL: Record<number, number> = { ...surfaceL, ...contrastL };
-  if (finalL[5] <= finalL[4]) {
-    finalL[5] = finalL[4] + 0.005;
-  }
+  // Unified step computation
+  const finalL = computeUnifiedSteps(bgL, step9L, step10L, step11L, DARK_STEP12_L, true, stepPositions);
 
   for (const step of STEP_INDICES) {
     const l = finalL[step];

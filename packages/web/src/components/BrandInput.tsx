@@ -1,4 +1,4 @@
-import type { GenerationConfig, SecondaryConfig, SecondaryMode, HarmonyType, HarmonyVariation, ThemeMode } from '@color-tool/core';
+import type { GenerationConfig, SecondaryConfig, SecondaryMode, HarmonyType, HarmonyVariation, ThemeMode, SemanticHarmonyConfig } from '@color-tool/core';
 import { getHarmonyVariations, getHarmonyLabel } from '@color-tool/core';
 import { ColorInput } from './ColorInput';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ interface BrandInputProps {
   backgroundColor?: string;
   defaultBackgroundColor?: string;
   onBackgroundChange?: (color: string) => void;
+  bgCompressed?: boolean;
   secondaryConfig?: SecondaryConfig;
   secondaryColor?: string;
   onSecondaryColorChange?: (color: string) => void;
@@ -41,6 +42,7 @@ export function BrandInput({
   backgroundColor,
   defaultBackgroundColor,
   onBackgroundChange,
+  bgCompressed,
   secondaryConfig,
   secondaryColor,
   onSecondaryColorChange,
@@ -64,12 +66,19 @@ export function BrandInput({
       <div className="flex flex-wrap items-start gap-6">
         <ColorInput label="Brand Color" color={color} onChange={onChange} />
         {backgroundColor !== undefined && onBackgroundChange && (
-          <ColorInput
-            label="Background"
-            color={backgroundColor}
-            onChange={onBackgroundChange}
-            defaultColor={defaultBackgroundColor}
-          />
+          <div className="flex flex-col gap-1">
+            <ColorInput
+              label="Background"
+              color={backgroundColor}
+              onChange={onBackgroundChange}
+              defaultColor={defaultBackgroundColor}
+            />
+            {bgCompressed && (
+              <p className="text-[10px] text-amber-500 leading-tight max-w-[170px]">
+                Background is too bright — palette steps are compressed
+              </p>
+            )}
+          </div>
         )}
 
         {secondaryConfig && onSecondaryConfigChange && (
@@ -194,6 +203,68 @@ export function BrandInput({
                 Equal Chroma
               </Label>
             </div>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="equal-lightness"
+                checked={config.equalizeLightness === true}
+                onCheckedChange={(checked) => onConfigChange({ equalizeLightness: checked })}
+              />
+              <Label htmlFor="equal-lightness" className="text-xs text-muted-foreground cursor-pointer">
+                Equal Lightness
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="semantic-harmony"
+                checked={config.semanticHarmony?.mode === 'auto'}
+                onCheckedChange={(checked) => onConfigChange({
+                  semanticHarmony: {
+                    mode: checked ? 'auto' : 'off',
+                    harmonyType: config.semanticHarmony?.harmonyType ?? 'triadic',
+                    strength: config.semanticHarmony?.strength ?? 0.5,
+                  }
+                })}
+              />
+              <Label htmlFor="semantic-harmony" className="text-xs text-muted-foreground cursor-pointer">
+                Semantic Harmony
+              </Label>
+            </div>
+
+            {config.semanticHarmony?.mode === 'auto' && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <ToggleGroup
+                    type="single"
+                    size="sm"
+                    value={config.semanticHarmony.harmonyType}
+                    onValueChange={(v) => v && onConfigChange({
+                      semanticHarmony: { ...config.semanticHarmony!, harmonyType: v as HarmonyType }
+                    })}
+                  >
+                    {(Object.keys(HARMONY_LABELS) as HarmonyType[]).map(type => (
+                      <ToggleGroupItem key={type} value={type}>{HARMONY_LABELS[type]}</ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                    {Math.round(config.semanticHarmony.strength * 100)}%
+                  </Label>
+                  <input
+                    type="range"
+                    min={0} max={100} step={5}
+                    value={Math.round(config.semanticHarmony.strength * 100)}
+                    onChange={(e) => onConfigChange({
+                      semanticHarmony: { ...config.semanticHarmony!, strength: +e.target.value / 100 }
+                    })}
+                    className="w-24 accent-primary"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="flex items-center gap-2">
               <Switch

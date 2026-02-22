@@ -44,35 +44,50 @@ export function resolveChromaStrategy(
   const neutralChroma = neutralStyle === 'tinted' ? 0.007 : 0;
 
   // Brand step 9 L depends on brandMode:
-  // fixed = exact user input L, auto = computed algorithmically
+  // fixed = exact user input L, auto = algorithmic optimal for this hue
   const brandStep9L = brandMode === 'fixed'
     ? brandOklch.l
     : computeStep9Lightness(hues.brand, gamut);
 
-  // Brand chroma — the reference for coherence
-  const brandChroma = brandMode === 'fixed'
-    ? brandOklch.c
-    : maxChromaForLH(brandStep9L, hues.brand, gamut);
+  // Brand chroma — the reference for coherence.
+  // fixed: exact user chroma. auto: user's chroma as ratio of gamut maximum —
+  // picking a desaturated color scales down the whole palette proportionally,
+  // while lightness stays at the algorithmic optimum (unlike fixed).
+  const gamutMaxBrand = maxChromaForLH(brandStep9L, hues.brand, gamut);
+  let brandChroma: number;
+  if (brandMode === 'fixed') {
+    brandChroma = brandOklch.c;
+  } else {
+    const userMaxC = maxChromaForLH(brandOklch.l, hues.brand, gamut);
+    const chromaRatio = userMaxC > 0.001 ? brandOklch.c / userMaxC : 1;
+    brandChroma = gamutMaxBrand * chromaRatio;
+  }
 
   // Chroma coherence ceiling: semantic roles can be at most 1.15x brand chroma.
   // This keeps the palette feeling unified — no role wildly outsaturates the brand.
-  const chromaCeiling = brandChroma * 1.15;
+  // Minimum floor ensures semantic colors stay distinguishable even with low-chroma brands
+  // (e.g. grey or pastel brand in fixed mode). 0.08 is roughly the threshold
+  // where hue differences become visually apparent in OKLCH.
+  const MIN_SEMANTIC_CHROMA = 0.15;
+  const chromaCeiling = Math.max(MIN_SEMANTIC_CHROMA, brandChroma * 1.15);
 
   // Per-role step 9 L (hue-aware + brand-blended with adaptive factor)
+  // When equalizeLightness is on, all non-neutral roles use brandStep9L
+  const eqLight = config.equalizeLightness;
   const roleLightness: Record<Exclude<SemanticRole, 'neutral'>, number> = {
     brand: brandStep9L,
     secondary: isSecondaryCustom
       ? secondaryOklch.l
-      : estimateSemanticStep9L(hues.secondary, hues.brand, brandStep9L, gamut),
-    success: estimateSemanticStep9L(hues.success, hues.brand, brandStep9L, gamut),
-    warning: estimateSemanticStep9L(hues.warning, hues.brand, brandStep9L, gamut),
-    danger: estimateSemanticStep9L(hues.danger, hues.brand, brandStep9L, gamut),
-    info: estimateSemanticStep9L(hues.info, hues.brand, brandStep9L, gamut),
+      : eqLight ? brandStep9L : estimateSemanticStep9L(hues.secondary, hues.brand, brandStep9L, gamut),
+    success: eqLight ? brandStep9L : estimateSemanticStep9L(hues.success, hues.brand, brandStep9L, gamut),
+    warning: eqLight ? brandStep9L : estimateSemanticStep9L(hues.warning, hues.brand, brandStep9L, gamut),
+    danger: eqLight ? brandStep9L : estimateSemanticStep9L(hues.danger, hues.brand, brandStep9L, gamut),
+    info: eqLight ? brandStep9L : estimateSemanticStep9L(hues.info, hues.brand, brandStep9L, gamut),
   };
 
-  // Compute max chroma for each role at its lightness
+  // Compute max chroma for each role at its actual step 9 lightness
   const gamutMax: Record<Exclude<SemanticRole, 'neutral'>, number> = {
-    brand: brandMode === 'fixed' ? brandOklch.c : maxChromaForLH(brandStep9L, hues.brand, gamut),
+    brand: brandChroma,
     secondary: isSecondaryCustom
       ? secondaryOklch.c
       : maxChromaForLH(roleLightness.secondary, hues.secondary, gamut),
@@ -95,11 +110,17 @@ export function resolveChromaStrategy(
 
   // Apply equalization if requested
   if (chromaEqualization === 'equal') {
-    const allValues = semanticKeys.map(k => coherentChromas[k]);
+    // Brand participates in equalization unless fixed by user
+    const brandFixed = brandMode === 'fixed';
+    const eqKeys = [...semanticKeys];
+    if (!brandFixed) eqKeys.push('brand');
+    if (!isSecondaryCustom) eqKeys.push('secondary');
+
+    const allValues = eqKeys.map(k => coherentChromas[k]);
     const minChroma = Math.min(...allValues);
     return {
-      brand: coherentChromas.brand,
-      secondary: coherentChromas.secondary,
+      brand: brandFixed ? coherentChromas.brand : minChroma,
+      secondary: isSecondaryCustom ? coherentChromas.secondary : minChroma,
       success: minChroma,
       warning: minChroma,
       danger: minChroma,

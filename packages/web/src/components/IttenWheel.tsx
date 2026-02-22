@@ -6,6 +6,7 @@ interface IttenWheelProps {
   semanticHues: SemanticHues;
   palette: Palette;
   secondaryActive: boolean;
+  harmonicAnchors?: number[];
 }
 
 const SIZE = 240;
@@ -71,7 +72,7 @@ function posOnCircle(hue: number, radius: number) {
   return { x: CENTER + radius * Math.cos(rad), y: CENTER + radius * Math.sin(rad) };
 }
 
-export function IttenWheel({ semanticHues, palette, secondaryActive }: IttenWheelProps) {
+export function IttenWheel({ semanticHues, palette, secondaryActive, harmonicAnchors }: IttenWheelProps) {
   const [hoveredRole, setHoveredRole] = useState<string | null>(null);
 
   const ringColors = useMemo(computeRingColors, []);
@@ -93,7 +94,7 @@ export function IttenWheel({ semanticHues, palette, secondaryActive }: IttenWhee
   const LABEL_R = OUTER_R + 14;
 
   return (
-    <div className="mt-4 flex justify-center">
+    <div className="flex justify-center">
       <svg
           width={SIZE + 80}
           height={SIZE + 40}
@@ -108,6 +109,24 @@ export function IttenWheel({ semanticHues, palette, secondaryActive }: IttenWhee
                 key={i}
                 d={arcPath(CENTER, CENTER, OUTER_R, INNER_R, start, end)}
                 fill={color}
+              />
+            );
+          })}
+
+          {/* Harmonic anchor markers (dashed lines) */}
+          {harmonicAnchors && harmonicAnchors.map((anchorHue, i) => {
+            const inner = posOnCircle(anchorHue, INNER_R - 6);
+            const outer = posOnCircle(anchorHue, OUTER_R + 6);
+            return (
+              <line
+                key={`anchor-${i}`}
+                x1={inner.x}
+                y1={inner.y}
+                x2={outer.x}
+                y2={outer.y}
+                stroke="rgba(255,255,255,0.4)"
+                strokeWidth={1.5}
+                strokeDasharray="3 3"
               />
             );
           })}

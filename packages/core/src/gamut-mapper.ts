@@ -242,6 +242,35 @@ export function colorToFloatComponents(color: string): [number, number, number] 
   ];
 }
 
+// Convert OKLCH to sRGB bytes [0-255] with gamut clamping.
+// Out-of-gamut colors have chroma reduced via binary search.
+// Returns [r, g, b] suitable for canvas ImageData.
+export function oklchToRGB(l: number, c: number, hDeg: number, gamut: 'sRGB' | 'P3' = 'sRGB'): [number, number, number] {
+  const toLinear = gamut === 'P3' ? oklchToLinearP3 : oklchToLinearSRGB;
+  // Try direct conversion first
+  let [lr, lg, lb] = toLinear(l, c, hDeg);
+  if (!inGamut01(lr, lg, lb)) {
+    // Binary search chroma reduction
+    let lo = 0, hi = c;
+    for (let i = 0; i < 16; i++) {
+      const mid = (lo + hi) / 2;
+      const [r, g, b] = toLinear(l, mid, hDeg);
+      if (inGamut01(r, g, b)) {
+        lr = r; lg = g; lb = b;
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+  }
+  // Both sRGB and P3 use the same gamma transfer function
+  return [
+    Math.round(clamp01(linToSRGB(lr)) * 255),
+    Math.round(clamp01(linToSRGB(lg)) * 255),
+    Math.round(clamp01(linToSRGB(lb)) * 255),
+  ];
+}
+
 // Parse HEX to OKLCH using culori (for input conversion)
 const toOklch = converter('oklch');
 

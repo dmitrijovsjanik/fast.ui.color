@@ -1,4 +1,4 @@
-import type { SemanticHues, NeutralStyle } from './types';
+import type { SemanticHues, NeutralStyle, SemanticHarmonyConfig, HarmonyType } from './types';
 
 // Target hues for each semantic role
 const TARGET_HUES = {
@@ -47,10 +47,44 @@ function harmonyPullStrength(brandDistance: number): number {
   return 18 * smooth;
 }
 
+// Compute harmonic anchor points on the hue wheel for a given harmony type
+function normalizeHue(h: number): number {
+  return ((h % 360) + 360) % 360;
+}
+
+export function computeHarmonicAnchors(brandHue: number, harmonyType: HarmonyType): number[] {
+  switch (harmonyType) {
+    case 'complementary':
+      return [brandHue, normalizeHue(brandHue + 180)];
+    case 'analogous':
+      return [normalizeHue(brandHue - 30), brandHue, normalizeHue(brandHue + 30)];
+    case 'triadic':
+      return [brandHue, normalizeHue(brandHue + 120), normalizeHue(brandHue + 240)];
+    case 'split-complementary':
+      return [brandHue, normalizeHue(brandHue + 150), normalizeHue(brandHue + 210)];
+    case 'tetradic':
+      return [brandHue, normalizeHue(brandHue + 90), normalizeHue(brandHue + 180), normalizeHue(brandHue + 270)];
+  }
+}
+
+function findNearestAnchor(hue: number, anchors: number[]): number {
+  let best = anchors[0];
+  let bestDist = angularDistance(hue, anchors[0]);
+  for (let i = 1; i < anchors.length; i++) {
+    const d = angularDistance(hue, anchors[i]);
+    if (d < bestDist) {
+      bestDist = d;
+      best = anchors[i];
+    }
+  }
+  return best;
+}
+
 export function resolveSemanticHues(
   brandHue: number,
   neutralStyle: NeutralStyle = 'tinted',
   secondaryHue?: number,
+  semanticHarmony?: SemanticHarmonyConfig,
 ): SemanticHues {
   const result: Partial<SemanticHues> = {
     brand: brandHue,
@@ -75,11 +109,16 @@ export function resolveSemanticHues(
 
     let adjustedHue: number;
 
+    const harmonyActive = semanticHarmony && semanticHarmony.mode !== 'off' && semanticHarmony.strength > 0;
+
     if (closestDistance < 30) {
       // Reserved hue (brand or secondary) is too close — push semantic hue away
       const pushStrength = (30 - closestDistance) * 0.6;
       const direction = hueDirection(closestHue, target);
       adjustedHue = target + pushStrength * direction;
+    } else if (harmonyActive) {
+      // Defer pulling to Phase 1.5 (harmonic anchor pull)
+      adjustedHue = target;
     } else {
       // Pull toward brand for harmony — nonlinear, stronger pull
       const pullStrength = harmonyPullStrength(brandDistance);
@@ -88,6 +127,27 @@ export function resolveSemanticHues(
     }
 
     adjusted[role] = clampHue(adjustedHue, range.min, range.max);
+  }
+
+  // Phase 1.5: Harmonic anchor pull (only if semantic harmony is active)
+  if (semanticHarmony && semanticHarmony.mode !== 'off' && semanticHarmony.strength > 0) {
+    const anchors = computeHarmonicAnchors(brandHue, semanticHarmony.harmonyType);
+    const MAX_HARMONIC_PULL = 25;
+
+    for (const role of semanticRoles) {
+      const range = HUE_RANGES[role];
+      const currentHue = adjusted[role];
+      const nearestAnchor = findNearestAnchor(currentHue, anchors);
+      const distance = angularDistance(currentHue, nearestAnchor);
+
+      if (distance < 2) continue; // Already aligned
+
+      const pullFraction = Math.min(1, distance / 60);
+      const pullAmount = semanticHarmony.strength * MAX_HARMONIC_PULL * pullFraction;
+      const direction = hueDirection(currentHue, nearestAnchor);
+
+      adjusted[role] = clampHue(currentHue + pullAmount * direction, range.min, range.max);
+    }
   }
 
   // Phase 2: Mutual repulsion — ensure semantic hues don't crowd each other

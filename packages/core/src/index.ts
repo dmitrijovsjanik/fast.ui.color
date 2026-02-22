@@ -34,7 +34,7 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
   }
 
   // 2. Resolve semantic hues (with secondary for conflict avoidance)
-  const hues = resolveSemanticHues(brandOklch.h, config.neutralStyle, secondaryHue);
+  const hues = resolveSemanticHues(brandOklch.h, config.neutralStyle, secondaryHue, config.semanticHarmony);
 
   // 3. Resolve chroma strategy
   const chromas = resolveChromaStrategy(config, brandOklch, hues, config.gamut, secondaryOklch);
@@ -70,8 +70,12 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
       ? brandOklch.c
       : undefined,
     backgroundLightness: bgL,
+    stepPositions: config.stepPositions,
   });
   const brandStep9L = brandScale.oklchScale[9].l;
+
+  // Equalize lightness: force all non-neutral roles to use brand's step 9 L
+  const eqL = config.equalizeLightness ? brandStep9L : undefined;
 
   // Generate secondary scale
   const isSecondaryCustomFixed = sec?.mode === 'custom' && secondaryOklch;
@@ -83,6 +87,8 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
     isNeutral: false,
     brandLightness: brandStep9L,
     backgroundLightness: bgL,
+    stepPositions: config.stepPositions,
+    forcedStep9L: eqL,
   });
 
   for (const role of SEMANTIC_ROLES) {
@@ -105,6 +111,8 @@ export function generatePalette(config: GenerationConfig): GenerationResult {
       isNeutral,
       brandLightness: isNeutral ? undefined : brandStep9L,
       backgroundLightness: bgL,
+      stepPositions: config.stepPositions,
+      forcedStep9L: isNeutral ? undefined : eqL,
       });
 
     palette[role] = hexScale;
