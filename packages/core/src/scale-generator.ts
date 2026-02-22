@@ -66,24 +66,12 @@ function computeUnifiedSteps(
   result[11] = step11L;
   result[12] = step12L;
 
-  // Wall compression — when shifted steps overshoot fixed anchors
+  // Wall compression — only for fixed anchors (steps 11-12 relative to 10)
   const MIN_GAP = 0.003;
   if (isDark) {
-    for (let step = 8; step >= 1; step--) {
-      const upper = step === 8 ? result[9] : result[step + 1];
-      if (result[step] >= upper - MIN_GAP) {
-        result[step] = upper - MIN_GAP;
-      }
-    }
     if (result[11] <= result[10] + MIN_GAP) result[11] = result[10] + MIN_GAP;
     if (result[12] <= result[11] + MIN_GAP) result[12] = result[11] + MIN_GAP;
   } else {
-    for (let step = 8; step >= 1; step--) {
-      const lower = step === 8 ? result[9] : result[step + 1];
-      if (result[step] <= lower + MIN_GAP) {
-        result[step] = lower + MIN_GAP;
-      }
-    }
     if (result[11] >= result[10] - MIN_GAP) result[11] = result[10] - MIN_GAP;
     if (result[12] >= result[11] - MIN_GAP) result[12] = result[11] - MIN_GAP;
   }

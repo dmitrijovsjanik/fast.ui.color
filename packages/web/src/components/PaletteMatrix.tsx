@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Palette, OklchPalette, AlphaPalette, SemanticRole, StepIndex } from '@color-tool/core';
-import { SEMANTIC_ROLES, STEP_INDICES, checkAPCAContrast } from '@color-tool/core';
+import type { Palette, OklchPalette, AlphaPalette, SemanticRole, StepIndex, ThemeMode } from '@color-tool/core';
+import { SEMANTIC_ROLES, STEP_INDICES, checkAPCAContrast, softClampY, hexToOklch } from '@color-tool/core';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 // Parse fraction input: "025" → 0.25, "0" → 0, "0,15" → 0.15, "1" → 1
 function parseFractionInput(raw: string): number | null {
@@ -22,49 +23,146 @@ function formatFraction(n: number): string {
   return n.toFixed(3).replace('.', ',');
 }
 
+// Format APCA Lc value as integer
+function formatLc(n: number): string {
+  return Math.round(n).toString();
+}
+
+// Parse APCA Lc input: integer or decimal
+function parseLcInput(raw: string): number | null {
+  const s = raw.trim().replace(',', '.');
+  if (s === '') return null;
+  const parsed = parseFloat(s);
+  return isNaN(parsed) ? null : parsed;
+}
+
+export type CurveDisplayMode = 'position' | 'apca';
+
+// Raw APCA Lc without loClip/offset — continuous down to 0 for smooth curve editing.
+// Standard apcaLcFromY clips values below ~10 Lc to 0, which makes steps 1-3 uneditable.
+const _normBG = 0.56, _normTXT = 0.57, _revBG = 0.65, _revTXT = 0.62;
+const _scaleBoW = 1.14, _scaleWoB = 1.14;
+
+function rawApcaLc(fgY: number, bgY: number): number {
+  const fgYc = softClampY(fgY);
+  const bgYc = softClampY(bgY);
+  if (bgYc > fgYc) {
+    const SAPC = (Math.pow(bgYc, _normBG) - Math.pow(fgYc, _normTXT)) * _scaleBoW;
+    return SAPC * 100;
+  } else {
+    const SAPC = (Math.pow(bgYc, _revBG) - Math.pow(fgYc, _revTXT)) * _scaleWoB;
+    return Math.abs(SAPC * 100);
+  }
+}
+
+// Reverse raw APCA: given target Lc (without offset), find foreground Y
+function reverseRawApca(targetLc: number, bgY: number, polarity: 'normal' | 'reverse'): number {
+  if (targetLc <= 0) return bgY;
+  const bgYc = softClampY(bgY);
+  if (polarity === 'reverse') {
+    const SAPC = targetLc / 100;
+    const txtYcPow = Math.pow(bgYc, _revBG) + SAPC / _scaleWoB;
+    if (txtYcPow <= 0) return 1.0;
+    const txtYc = Math.pow(txtYcPow, 1.0 / _revTXT);
+    return Math.min(1.0, Math.max(0, txtYc));
+  } else {
+    const SAPC = targetLc / 100;
+    const txtYcPow = Math.pow(bgYc, _normBG) - SAPC / _scaleBoW;
+    if (txtYcPow <= 0) return 0;
+    const txtYc = Math.pow(txtYcPow, 1.0 / _normTXT);
+    return Math.min(1.0, Math.max(0, txtYc));
+  }
+}
+
+// Convert step position fraction → APCA Lc contrast vs background
+function positionToApca(position: number, bgL: number, step9L: number, isDark: boolean): number {
+  const bgY = bgL * bgL * bgL;
+  const s9Y = step9L * step9L * step9L;
+  const rangeY = isDark ? (s9Y - bgY) : (bgY - s9Y);
+  const offsetY = position * rangeY;
+  const stepY = isDark ? bgY + offsetY : bgY - offsetY;
+  const fgY = Math.max(0, stepY);
+  return rawApcaLc(fgY, bgY);
+}
+
+// Convert APCA Lc target → step position fraction
+function apcaToPosition(targetLc: number, bgL: number, step9L: number, isDark: boolean): number {
+  const polarity = isDark ? 'reverse' : 'normal';
+  const bgY = bgL * bgL * bgL;
+  const fgY = reverseRawApca(targetLc, bgY, polarity);
+  const stepL = Math.cbrt(fgY);
+  const s9Y = step9L * step9L * step9L;
+  const rangeY = isDark ? (s9Y - bgY) : (bgY - s9Y);
+  if (Math.abs(rangeY) < 1e-10) return 0;
+  const stepY = stepL * stepL * stepL;
+  const offsetY = isDark ? (stepY - bgY) : (bgY - stepY);
+  return Math.max(0, Math.min(0.999, offsetY / rangeY));
+}
+
 // Deferred-commit number input with auto "0." insertion
 function StepPositionInput({
   value,
   onChange,
   onReset,
   isModified,
+  mode,
+  apcaValue,
+  onChangeApca,
 }: {
   value: number;
   onChange: (v: number) => void;
   onReset: () => void;
   isModified: boolean;
+  mode: CurveDisplayMode;
+  apcaValue?: number;
+  onChangeApca?: (lc: number) => void;
 }) {
-  const [localValue, setLocalValue] = useState(formatFraction(value));
+  const formatValue = mode === 'apca' && apcaValue !== undefined
+    ? () => formatLc(apcaValue)
+    : () => formatFraction(value);
+
+  const [localValue, setLocalValue] = useState(formatValue());
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync from parent when not focused
   useEffect(() => {
     if (!isFocused) {
-      setLocalValue(formatFraction(value));
+      setLocalValue(formatValue());
     }
-  }, [value, isFocused]);
+  }, [value, apcaValue, mode, isFocused]);
 
   const commit = () => {
-    const parsed = parseFractionInput(localValue);
-    if (parsed !== null) {
-      const clamped = Math.max(0, Math.min(1, parsed));
-      onChange(clamped);
-      setLocalValue(formatFraction(clamped));
+    if (mode === 'apca' && onChangeApca) {
+      const parsed = parseLcInput(localValue);
+      if (parsed !== null) {
+        const clamped = Math.max(0, Math.min(120, parsed));
+        onChangeApca(clamped);
+      }
+      setLocalValue(formatValue());
     } else {
-      setLocalValue(formatFraction(value));
+      const parsed = parseFractionInput(localValue);
+      if (parsed !== null) {
+        const clamped = Math.max(0, Math.min(1, parsed));
+        onChange(clamped);
+        setLocalValue(formatFraction(clamped));
+      } else {
+        setLocalValue(formatFraction(value));
+      }
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let v = e.target.value;
-    // Auto-insert "0," when user types a single "0"
-    if (v === '0') {
-      setLocalValue('0,');
-      requestAnimationFrame(() => {
-        inputRef.current?.setSelectionRange(2, 2);
-      });
-      return;
+    if (mode === 'position') {
+      // Auto-insert "0," when user types a single "0"
+      if (v === '0') {
+        setLocalValue('0,');
+        requestAnimationFrame(() => {
+          inputRef.current?.setSelectionRange(2, 2);
+        });
+        return;
+      }
     }
     setLocalValue(v);
   };
@@ -89,12 +187,20 @@ function StepPositionInput({
           }
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
             e.preventDefault();
-            const step = e.shiftKey ? 0.1 : 0.01;
-            const delta = e.key === 'ArrowUp' ? step : -step;
-            const current = parseFractionInput(localValue) ?? value;
-            const next = Math.max(0, Math.min(1, current + delta));
-            onChange(next);
-            setLocalValue(formatFraction(next));
+            if (mode === 'apca' && onChangeApca && apcaValue !== undefined) {
+              const step = e.shiftKey ? 5 : 1;
+              const delta = e.key === 'ArrowUp' ? step : -step;
+              const next = Math.max(0, Math.min(120, apcaValue + delta));
+              onChangeApca(next);
+              setLocalValue(formatLc(next));
+            } else {
+              const step = e.shiftKey ? 0.1 : 0.01;
+              const delta = e.key === 'ArrowUp' ? step : -step;
+              const current = parseFractionInput(localValue) ?? value;
+              const next = Math.max(0, Math.min(1, current + delta));
+              onChange(next);
+              setLocalValue(formatFraction(next));
+            }
           }
         }}
         onKeyPress={e => {
@@ -137,6 +243,10 @@ interface PaletteMatrixProps {
   onStepPositionChange: (step: number, value: number) => void;
   onResetStepPosition: (step: number) => void;
   onResetAllStepPositions: () => void;
+  curveDisplayMode: CurveDisplayMode;
+  onCurveDisplayModeChange: (mode: CurveDisplayMode) => void;
+  backgroundColor: string;
+  theme: ThemeMode;
 }
 
 const ROLE_LABELS: Record<SemanticRole, string> = {
@@ -164,8 +274,13 @@ function getAaColor(step: StepIndex, scale: Record<StepIndex, string>): string |
   return null;
 }
 
-export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, secondaryActive, displayMode, colorFormat, stepPositions, defaultStepPositions, onStepPositionChange, onResetStepPosition, onResetAllStepPositions }: PaletteMatrixProps) {
+export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, secondaryActive, displayMode, colorFormat, stepPositions, defaultStepPositions, onStepPositionChange, onResetStepPosition, onResetAllStepPositions, curveDisplayMode, onCurveDisplayModeChange, backgroundColor, theme }: PaletteMatrixProps) {
   const [hoveredCell, setHoveredCell] = useState<string | null>(null);
+
+  // Precompute APCA conversion params
+  const isDark = theme === 'dark';
+  const bgL = hexToOklch(backgroundColor).l;
+  const step9L = oklchPalette.neutral[9].l;
 
   const displayRoles = secondaryActive
     ? SEMANTIC_ROLES
@@ -255,22 +370,35 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
         </div>
       ))}
 
-      {/* Step position fraction inputs */}
+      {/* Step position / APCA contrast inputs */}
       <div className="flex items-center mt-2">
-        <div className="w-20 shrink-0 flex items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground">Curve</span>
-          <button
-            onClick={onResetAllStepPositions}
-            className="px-1.5 py-0.5 text-[10px] rounded bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            title="Reset all step positions"
+        <div className="w-20 shrink-0 flex flex-col items-start gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground">Curve</span>
+            <button
+              onClick={onResetAllStepPositions}
+              className="px-1.5 py-0.5 text-[10px] rounded bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="Reset all step positions"
+            >
+              Reset
+            </button>
+          </div>
+          <ToggleGroup
+            type="single"
+            size="sm"
+            value={curveDisplayMode}
+            onValueChange={v => v && onCurveDisplayModeChange(v as CurveDisplayMode)}
+            className="h-5"
           >
-            Reset
-          </button>
+            <ToggleGroupItem value="position" className="text-[9px] px-1.5 h-5">Pos</ToggleGroupItem>
+            <ToggleGroupItem value="apca" className="text-[9px] px-1.5 h-5">Lc</ToggleGroupItem>
+          </ToggleGroup>
         </div>
         <div className="flex-1 grid grid-cols-12 gap-1">
           {STEP_INDICES.map(step => {
             const isEditable = step <= 8;
             const isModified = isEditable && Math.abs((stepPositions[step] ?? 0) - (defaultStepPositions[step] ?? 0)) > 0.0001;
+            const apcaVal = isEditable ? positionToApca(stepPositions[step] ?? 0, bgL, step9L, isDark) : undefined;
             return (
               <div key={step}>
                 {isEditable ? (
@@ -279,6 +407,12 @@ export function PaletteMatrix({ palette, oklchPalette, alphaPalette, onCopy, sec
                     onChange={v => onStepPositionChange(step, v)}
                     onReset={() => onResetStepPosition(step)}
                     isModified={isModified}
+                    mode={curveDisplayMode}
+                    apcaValue={apcaVal}
+                    onChangeApca={lc => {
+                      const pos = apcaToPosition(lc, bgL, step9L, isDark);
+                      onStepPositionChange(step, pos);
+                    }}
                   />
                 ) : (
                   <div className="h-10 flex items-center justify-center text-[10px] font-mono text-muted-foreground/40">—</div>

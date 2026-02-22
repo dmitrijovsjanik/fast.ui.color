@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { generatePalette, checkAPCAContrast, checkBackgroundCompression, hexToOklch, DEFAULT_NAMING_CONFIG, DARK_STEP_POSITIONS, LIGHT_STEP_POSITIONS, computeHarmonicAnchors, type GenerationConfig, type GenerationResult, type NamingConfig, type SecondaryConfig } from '@color-tool/core';
 import { Header } from './components/Header';
 import { BrandInput } from './components/BrandInput';
-import { PaletteMatrix } from './components/PaletteMatrix';
+import { PaletteMatrix, type CurveDisplayMode } from './components/PaletteMatrix';
 import { IttenWheel } from './components/IttenWheel';
 import { GamutCharts } from './components/GamutCharts';
 import { ComponentShowcase } from './components/ComponentShowcase';
@@ -35,14 +35,77 @@ const DEFAULT_CONFIG: GenerationConfig = {
   },
 };
 
+// --- localStorage persistence ---
+
+const LS_KEY = 'color-tool-settings';
+
+interface PerThemeSettings {
+  stepPositions?: Record<number, number>;
+  backgroundColor: string;
+}
+
+interface PersistedState {
+  config: GenerationConfig;
+  perTheme: { light: PerThemeSettings; dark: PerThemeSettings };
+  displayMode: 'semantic' | 'fill';
+  colorFormat: 'alpha' | 'solid';
+  curveDisplayMode: CurveDisplayMode;
+}
+
+const DEFAULT_PER_THEME: { light: PerThemeSettings; dark: PerThemeSettings } = {
+  light: { backgroundColor: LIGHT_BG },
+  dark: { backgroundColor: DARK_BG },
+};
+
+function loadState(): { config: GenerationConfig; perTheme: typeof DEFAULT_PER_THEME; displayMode: 'semantic' | 'fill'; colorFormat: 'alpha' | 'solid'; curveDisplayMode: CurveDisplayMode } {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) throw new Error('no saved state');
+    const parsed: PersistedState = JSON.parse(raw);
+    // Apply per-theme settings to config
+    const theme = parsed.config.theme ?? 'light';
+    const themeSettings = parsed.perTheme?.[theme] ?? DEFAULT_PER_THEME[theme];
+    const config = {
+      ...DEFAULT_CONFIG,
+      ...parsed.config,
+      stepPositions: themeSettings.stepPositions,
+      backgroundColor: themeSettings.backgroundColor,
+    };
+    return {
+      config,
+      perTheme: { ...DEFAULT_PER_THEME, ...parsed.perTheme },
+      displayMode: parsed.displayMode ?? 'semantic',
+      colorFormat: parsed.colorFormat ?? 'alpha',
+      curveDisplayMode: parsed.curveDisplayMode ?? 'position',
+    };
+  } catch {
+    return {
+      config: DEFAULT_CONFIG,
+      perTheme: DEFAULT_PER_THEME,
+      displayMode: 'semantic',
+      colorFormat: 'alpha',
+      curveDisplayMode: 'position',
+    };
+  }
+}
+
+function saveState(state: PersistedState) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  } catch { /* quota exceeded — ignore */ }
+}
+
 export function App() {
-  const [config, setConfig] = useState<GenerationConfig>(DEFAULT_CONFIG);
+  const initial = useMemo(() => loadState(), []);
+  const [config, setConfig] = useState<GenerationConfig>(initial.config);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [namingConfig, setNamingConfig] = useState<NamingConfig>(DEFAULT_NAMING_CONFIG);
-  const [displayMode, setDisplayMode] = useState<'semantic' | 'fill'>('semantic');
-  const [colorFormat, setColorFormat] = useState<'alpha' | 'solid'>('alpha');
+  const [displayMode, setDisplayMode] = useState<'semantic' | 'fill'>(initial.displayMode);
+  const [colorFormat, setColorFormat] = useState<'alpha' | 'solid'>(initial.colorFormat);
   const [vizTab, setVizTab] = useState<'hue-map' | 'showcase'>('hue-map');
+  const [curveDisplayMode, setCurveDisplayMode] = useState<CurveDisplayMode>(initial.curveDisplayMode);
+  const perThemeRef = useRef(initial.perTheme);
 
   const harmonicAnchors = useMemo(() => {
     const sh = config.semanticHarmony;
@@ -60,11 +123,10 @@ export function App() {
   const handleStepPositionChange = useCallback((step: number, value: number) => {
     setConfig(prev => {
       const base = prev.stepPositions ?? (prev.theme === 'dark' ? { ...DARK_STEP_POSITIONS } : { ...LIGHT_STEP_POSITIONS });
-      // Clamp between neighbors to maintain monotonic order
-      const min = step > 1 ? (base[step - 1] ?? 0) + 0.001 : 0;
-      const max = step < 8 ? (base[step + 1] ?? 1) - 0.001 : 0.999;
-      const clamped = Math.max(min, Math.min(max, value));
-      return { ...prev, stepPositions: { ...base, [step]: clamped } };
+      const clamped = Math.max(0, Math.min(0.999, value));
+      const newPositions = { ...base, [step]: clamped };
+      perThemeRef.current = { ...perThemeRef.current, [prev.theme]: { ...perThemeRef.current[prev.theme], stepPositions: newPositions } };
+      return { ...prev, stepPositions: newPositions };
     });
   }, []);
 
@@ -73,25 +135,46 @@ export function App() {
       const defaults = prev.theme === 'dark' ? DARK_STEP_POSITIONS : LIGHT_STEP_POSITIONS;
       if (!prev.stepPositions) return prev;
       const updated = { ...prev.stepPositions, [step]: defaults[step] };
-      // If all match defaults, clear custom positions
       const allDefault = Object.keys(defaults).every(k => Math.abs(updated[+k] - defaults[+k]) < 0.0001);
-      return { ...prev, stepPositions: allDefault ? undefined : updated };
+      const newPositions = allDefault ? undefined : updated;
+      perThemeRef.current = { ...perThemeRef.current, [prev.theme]: { ...perThemeRef.current[prev.theme], stepPositions: newPositions } };
+      return { ...prev, stepPositions: newPositions };
     });
   }, []);
 
   const handleResetAllStepPositions = useCallback(() => {
-    setConfig(prev => ({ ...prev, stepPositions: undefined }));
+    setConfig(prev => {
+      perThemeRef.current = { ...perThemeRef.current, [prev.theme]: { ...perThemeRef.current[prev.theme], stepPositions: undefined } };
+      return { ...prev, stepPositions: undefined };
+    });
   }, []);
-
-  // Reset step positions when theme changes
-  useEffect(() => {
-    setConfig(prev => ({ ...prev, stepPositions: undefined }));
-  }, [config.theme]);
 
   // Sync dark class on <html>
   useEffect(() => {
     document.documentElement.classList.toggle('dark', config.theme === 'dark');
   }, [config.theme]);
+
+  // Persist settings to localStorage
+  useEffect(() => {
+    // Keep perThemeRef in sync with current config
+    const currentTheme = config.theme;
+    perThemeRef.current = {
+      ...perThemeRef.current,
+      [currentTheme]: {
+        stepPositions: config.stepPositions,
+        backgroundColor: config.backgroundColor ?? (currentTheme === 'dark' ? DARK_BG : LIGHT_BG),
+      },
+    };
+    // Strip per-theme fields from config before saving
+    const { stepPositions: _sp, backgroundColor: _bg, ...configWithoutPerTheme } = config;
+    saveState({
+      config: configWithoutPerTheme as GenerationConfig,
+      perTheme: perThemeRef.current,
+      displayMode,
+      colorFormat,
+      curveDisplayMode,
+    });
+  }, [config, displayMode, colorFormat, curveDisplayMode]);
 
   // Check if bg is too bright for the current theme
   const bgCompressed = config.backgroundColor
@@ -157,16 +240,30 @@ export function App() {
   }, []);
 
   const handleBackgroundChange = useCallback((color: string) => {
-    setConfig(prev => ({ ...prev, backgroundColor: color }));
+    setConfig(prev => {
+      perThemeRef.current = { ...perThemeRef.current, [prev.theme]: { ...perThemeRef.current[prev.theme], backgroundColor: color } };
+      return { ...prev, backgroundColor: color };
+    });
   }, []);
 
   const handleThemeToggle = useCallback(() => {
     setConfig(prev => {
       const newTheme = prev.theme === 'light' ? 'dark' : 'light';
+      // Save current theme's per-theme settings
+      perThemeRef.current = {
+        ...perThemeRef.current,
+        [prev.theme]: {
+          stepPositions: prev.stepPositions,
+          backgroundColor: prev.backgroundColor ?? (prev.theme === 'dark' ? DARK_BG : LIGHT_BG),
+        },
+      };
+      // Restore new theme's per-theme settings
+      const newThemeSettings = perThemeRef.current[newTheme];
       return {
         ...prev,
         theme: newTheme,
-        backgroundColor: newTheme === 'dark' ? DARK_BG : LIGHT_BG,
+        stepPositions: newThemeSettings.stepPositions,
+        backgroundColor: newThemeSettings.backgroundColor,
       };
     });
   }, []);
@@ -193,8 +290,9 @@ export function App() {
   }, []);
 
   const generateBothThemes = useCallback(() => {
-    const lightResult = generatePalette({ ...config, theme: 'light', backgroundColor: LIGHT_BG });
-    const darkResult = generatePalette({ ...config, theme: 'dark', backgroundColor: DARK_BG });
+    const pt = perThemeRef.current;
+    const lightResult = generatePalette({ ...config, theme: 'light', backgroundColor: pt.light.backgroundColor, stepPositions: pt.light.stepPositions });
+    const darkResult = generatePalette({ ...config, theme: 'dark', backgroundColor: pt.dark.backgroundColor, stepPositions: pt.dark.stepPositions });
     return { lightResult, darkResult };
   }, [config]);
 
@@ -243,6 +341,10 @@ export function App() {
               onStepPositionChange={handleStepPositionChange}
               onResetStepPosition={handleResetStepPosition}
               onResetAllStepPositions={handleResetAllStepPositions}
+              curveDisplayMode={curveDisplayMode}
+              onCurveDisplayModeChange={setCurveDisplayMode}
+              backgroundColor={config.backgroundColor ?? (config.theme === 'dark' ? DARK_BG : LIGHT_BG)}
+              theme={config.theme}
             />
             <div className="rounded-xl bg-card p-6 mb-6">
               <ToggleGroup
