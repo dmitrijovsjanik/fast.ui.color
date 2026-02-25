@@ -49,8 +49,6 @@ Core Principles
 •No Laziness: Identify root causes. Avoid temporary fixes. Apply senior developer standards.
 •Minimal Impact: Touch only what is necessary. Avoid introducing new bugs.
 
-Design System
-•ALWAYS consult `Design System Rules.md` before any UX/UI work — layout, spacing, typography, color, forms, navigation, accessibility, dark theme.
-•The file contains actionable design rules grounded in cognitive science (Gestalt, Fitts's Law, Hick's Law, Weber's Law, etc.).
-•All UI decisions must comply with the rules defined there: 8pt grid, modular type scale, WCAG contrast, touch targets, button hierarchy, and anti-patterns list.
-•When in doubt about a visual or interaction choice, re-read the relevant section of `Design System Rules.md` before proceeding.
+Resources
+UI Components Lib https://github.com/shadcn-ui/ui https://ui.shadcn.com/docs
+Icons Prefer https://github.com/hugeicons/hugeicons-react free set
