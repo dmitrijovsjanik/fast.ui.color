@@ -2,10 +2,9 @@ import type { HexColor, AlphaColor, AlphaColorScale, ColorScale, StepIndex } fro
 import { STEP_INDICES } from './types';
 import { colorToRGB, colorToFloatComponents } from './gamut-mapper';
 
-// Tolerance-based alpha algorithm in 0-1 float space.
-// Keeps overlay channels within TOLERANCE of the target to avoid
-// extreme saturation that causes rendering artifacts on wide-gamut displays.
-const FLOAT_TOLERANCE = 30 / 255; // ~0.118, matches 30/255 in integer space
+// Minimum-alpha algorithm: find the lowest possible alpha where the
+// overlay color stays within gamut [0,1]. This produces maximally
+// transparent colors that blend well — matching Radix Colors behavior.
 
 function solveAlphaFloat(
   sc: [number, number, number],
@@ -17,7 +16,7 @@ function solveAlphaFloat(
     return { c: [0, 0, 0], a: 0 };
   }
 
-  // Minimum alpha per channel (overlay must stay in [0,1])
+  // Minimum alpha per channel so that overlay = (S - B*(1-a)) / a stays in [0,1]
   const minAlphas = sc.map((s, i) => {
     const b = bc[i];
     if (Math.abs(s - b) < EPS) return 0;
@@ -25,16 +24,7 @@ function solveAlphaFloat(
     return b < EPS ? 1 : (b - s) / b;
   });
 
-  // Tolerance alpha: keep overlay within ±TOLERANCE of target
-  // |overlay - target| = |S - B| * (1 - a) / a <= TOL
-  // → a >= |S - B| / (|S - B| + TOL)
-  const tolAlphas = sc.map((s, i) => {
-    const diff = Math.abs(s - bc[i]);
-    if (diff < EPS) return 0;
-    return diff / (diff + FLOAT_TOLERANCE);
-  });
-
-  let a = Math.max(...tolAlphas, ...minAlphas);
+  let a = Math.max(...minAlphas);
   a = Math.min(1, Math.max(EPS, a));
   a = Math.round(a * 1000) / 1000;
 
@@ -48,8 +38,8 @@ function solveAlphaFloat(
 
 // Given a solid target color and a background, find the semi-transparent
 // color that composites to the same visual result over that background.
-// Uses tolerance-based alpha: keeps overlay channels close to the target color
-// to avoid extreme saturation artifacts on wide-gamut (P3) displays.
+// Uses minimum-alpha approach: finds the lowest alpha where overlay stays
+// within gamut, producing maximally transparent colors that blend well.
 //
 // For sRGB: works in 0-255 integer space, outputs rgba().
 // For P3: works in 0-1 float space, outputs color(display-p3 r g b / a).
@@ -93,26 +83,16 @@ export function computeAlphaColor(
     return { r: 0, g: 0, b: 0, a: 0, css: 'rgba(0, 0, 0, 0)' };
   }
 
-  const INT_TOLERANCE = 30; // max overlay deviation from target per channel
-
   const channels: [number, number][] = [[sr, br], [sg, bg], [sb, bb]];
 
-  // Minimum alpha per channel (overlay must stay in [0,255])
+  // Minimum alpha per channel so that overlay = (S - B*(1-a)) / a stays in [0,255]
   const minAlphas = channels.map(([s, b]) => {
     if (s === b) return 0;
     if (s > b) return b === 255 ? 1 : (s - b) / (255 - b);
     return b === 0 ? 1 : (b - s) / b;
   });
 
-  // Tolerance alpha: keep overlay within ±TOLERANCE of target
-  // → a >= |S - B| / (|S - B| + TOL)
-  const tolAlphas = channels.map(([s, b]) => {
-    const diff = Math.abs(s - b);
-    if (diff === 0) return 0;
-    return diff / (diff + INT_TOLERANCE);
-  });
-
-  let a = Math.max(...tolAlphas, ...minAlphas);
+  let a = Math.max(...minAlphas);
   a = Math.min(1, Math.max(1 / 255, a));
   a = Math.round(a * 1000) / 1000;
 
